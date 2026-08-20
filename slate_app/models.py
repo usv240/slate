@@ -94,3 +94,7 @@ class RemediationApproval(BaseModel):
     action: Literal["requeue_safe", "increase_workers", "prioritize_contract", "escalate_deadline"]
     operator_id: str = Field(min_length=2, max_length=120)
     approved: bool
+
+
+class InvestigationRequest(BaseModel):
+    operator_id: str = Field(min_length=2, max_length=120)

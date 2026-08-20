@@ -53,3 +53,14 @@ def test_projected_completion_before_contract_is_healthy():
     result = evaluate_jeopardy(record(deadline_seconds=600, p95=10, observations=sustained()), NOW)
     assert result.verdict == "healthy"
     assert "projected_completion_after_contract" in result.gate["failed"]
+
+def test_subsecond_observations_are_not_sustained_windows():
+    observations = [
+        BurnObservation(observed_at=NOW - timedelta(seconds=2), schedule_budget_seconds=30),
+        BurnObservation(observed_at=NOW - timedelta(seconds=1), schedule_budget_seconds=20),
+        BurnObservation(observed_at=NOW, schedule_budget_seconds=10),
+    ]
+    result = evaluate_jeopardy(record(observations=observations), NOW)
+    assert result.verdict == "healthy"
+    assert "positive_burn_sustained_two_windows" in result.gate["failed"]
+    assert result.burn_rates == []
