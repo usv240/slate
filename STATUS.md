@@ -10,19 +10,20 @@ Updated: 2026-08-20
 - [x] Deterministic three-threshold jeopardy gate
 - [x] Human approval on every remediation endpoint
 - [x] Prometheus metrics, structured logs and OpenTelemetry spans
-- [x] Google ADK Watch → Diagnose → Remediate topology
+- [x] Google ADK Watch / Diagnose / Remediate topology with a real runtime request path
 - [x] Grafana MCP client fails closed when unconfigured
 - [x] PromQL recording and alert rule
 - [x] Light-default Plain/Technical web board
-- [x] Public Cloud Run engineering deployment
-- [x] 11-test suite and four-fault benchmark report
+- [x] Public Cloud Run deployment on a dedicated least-privilege runtime identity
+- [x] Vertex mode reported ready by the live health endpoint
+- [x] 17-test suite, two optional FFmpeg integration tests, and four-fault benchmark report
 
 ## Required before Grafana-track submission
 
 - [ ] Connect a real Grafana Cloud stack
 - [ ] Send metrics, logs and traces and show live correlation
 - [ ] Configure official `grafana/mcp-grafana` with service-account token
-- [ ] Demonstrate MCP reads and writes (annotation, alert, incident)
+- [ ] Demonstrate a complete ADK run plus MCP reads and writes (annotation, alert, incident)
 - [ ] Add durable state instead of Cloud Run process memory
 - [ ] Evaluate more runs, including true queue-capacity starvation
 - [ ] Evaluate Gemini diagnosis and remediation quality separately

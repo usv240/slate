@@ -2,7 +2,7 @@
 
 SLATE treats a contractual media-delivery date as a deterministic schedule budget. A real FFmpeg pipeline fans a self-generated source into actual rendition jobs, performs real conformance checks, packages the outputs, and sends them to an explicitly simulated delivery endpoint. Real durations, failures, queue depth, bytes, logs, and traces become the observability data; no demo metric is pre-scripted.
 
-Engineering deployment: <https://slate-delivery-slo-109051079423.us-central1.run.app>
+Engineering deployment (Cloud Run `us-east1`; Vertex AI `us-central1`): <https://slate-delivery-slo-109051079423.us-east1.run.app>
 
 The schedule-budget mechanic and predictive pre-miss alerting are not novel. Our documented search found standard pipeline observability, automated QC, predictive logistics alerts, and writing applying error-budget thinking to delivery. We have not confirmed whether SDVI Rally, Dalet Flex, Vidispine, or Ateme predict contractual deadline risk, and do not claim they cannot.
 
