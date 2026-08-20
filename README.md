@@ -2,7 +2,9 @@
 
 SLATE treats a contractual media-delivery date as a deterministic schedule budget. A real FFmpeg pipeline fans a self-generated source into actual rendition jobs, performs real conformance checks, packages the outputs, and sends them to an explicitly simulated delivery endpoint. Real durations, failures, queue depth, bytes, logs, and traces become the observability data; no demo metric is pre-scripted.
 
-Engineering deployment (Cloud Run `us-east1`; Vertex AI `us-central1`): <https://slate-delivery-slo-109051079423.us-east1.run.app>
+Judging deployment (Cloud Run and Vertex AI, `us-central1`): <https://slate-delivery-slo-109051079423.us-central1.run.app>
+
+Live Grafana control tower: <https://35-255-68-247.sslip.io/d/slate-delivery/slate-delivery-control-tower?kiosk>
 
 The schedule-budget mechanic and predictive pre-miss alerting are not novel. Our documented search found standard pipeline observability, automated QC, predictive logistics alerts, and writing applying error-budget thinking to delivery. We have not confirmed whether SDVI Rally, Dalet Flex, Vidispine, or Ateme predict contractual deadline risk, and do not claim they cannot.
 
@@ -18,7 +20,7 @@ Gemini cannot compute or override this verdict. Watch, Diagnose, and Remediate a
 
 ## Verified baseline
 
-- `17 passed` locally, plus two FFmpeg-dependent tests that run when FFmpeg is present. The deployed container includes FFmpeg.
+- `21 passed` locally, plus two FFmpeg-dependent tests that run when FFmpeg is present. The deployed container includes FFmpeg.
 - Hosted Cloud Run acceptance: real transcode passed, package completed, 127,826 output bytes.
 - Four-fault engineering benchmark: 4/4 deterministic labels correct.
 - Constructed schedule-history benchmark: sustained case detected six hours ahead; 0/2 negative fixtures opened jeopardy.
@@ -39,11 +41,12 @@ FFmpeg is mandatory. FFprobe is preferred; when it is unavailable, SLATE decodes
 ## Current build status
 
 - Real ingest, parallel FFmpeg transcodes, output QC, packaging, and a simulated delivery receiver.
-- Real Prometheus metrics and OpenTelemetry spans; OTLP export activates only when an endpoint is configured.
+- Real Prometheus metrics plus OTLP logs and traces, ingested by a dedicated self-hosted Grafana OSS stack (Grafana, Prometheus, Loki, Tempo, and Alloy).
 - PromQL recording rule and sustained jeopardy alert.
 - Three-role Google ADK topology invoked at runtime through `POST /v1/jeopardy/{id}/investigate`; each role's output is separately inspectable.
-- Grafana MCP client that fails closed without `GRAFANA_MCP_COMMAND`.
-- Public API: `/v1/deliveries`, `/v1/jeopardy/{id}`, deterministic-gated agent investigation, remediation approval, and `/metrics`.
-- Light-default delivery board with page-level Plain/Technical modes.
+- Official `grafana/mcp-grafana` v1.1.0 runtime; health is based on a live MCP PromQL round-trip, not environment presence.
+- Public API: `/v1/deliveries`, `/v1/jeopardy/{id}`, deterministic-gated agent investigation, remediation approval, `/metrics`, and judge-visible Grafana evidence.
+- Durable production state in Firestore; local development deliberately uses in-memory state.
+- Light-default delivery board with page-level Plain/Technical modes and a one-click real judge proof.
 
-Track eligibility is **not yet complete**: a real Grafana Cloud stack, real telemetry ingestion, and demonstrated MCP reads and writes are mandatory. Browser-based visual sign-off is also still open; automated page/content tests pass.
+The required Grafana runtime integration is live and verified: official MCP tool discovery, PromQL and LogQL reads, an MCP-created annotation after human approval, and a completed three-agent ADK investigation all passed on 20 August 2026. The rules explicitly allow the open-source Grafana MCP server with a service-account token for unattended deployments. Browser-based visual sign-off and the public three-minute video remain release tasks.

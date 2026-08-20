@@ -139,6 +139,10 @@ class PipelineRunner:
             if durations:
                 record.p95_seconds_per_spec = durations[min(len(durations) - 1, round(0.95 * len(durations)) - 1)]
             failed = [job for job in jobs if job.status == "failed"]
+            # Failed renditions remain real outstanding work. Clearing the
+            # queue here made the jeopardy gate mathematically unreachable.
+            record.pending_specs = len(failed)
+            QUEUE_DEPTH.labels(delivery_id=record.delivery_id).set(record.pending_specs)
             record.retry_penalty_seconds = sum(max(record.p95_seconds_per_spec, job.duration_seconds) for job in failed)
             with stage_span("package.manifest", delivery_id=record.delivery_id):
                 manifest = {"delivery_id": record.delivery_id, "title": record.title, "generated_at": datetime.now(timezone.utc).isoformat(), "jobs": [job.model_dump() for job in record.jobs]}

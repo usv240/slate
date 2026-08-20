@@ -1,0 +1,19 @@
+groups:
+  - name: slate.schedule_budget
+    interval: 30s
+    rules:
+      - record: slate:schedule_budget_seconds
+        expr: max by (delivery_id) (slate_schedule_budget_seconds)
+      - record: slate:schedule_budget_burn_rate_5m
+        expr: clamp_min(-deriv(slate_schedule_budget_seconds[5m]), 0)
+      - alert: SlateDeliveryJeopardy
+        expr: |
+          (slate:schedule_budget_seconds < 0)
+          and (slate:schedule_budget_burn_rate_5m > 0)
+          and (slate_queue_depth > 0)
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Delivery {{ $labels.delivery_id }} is projected beyond its contractual date"
+          description: "Deterministic schedule budget is negative with sustained burn and unfinished rendition work. Human approval is required for remediation."

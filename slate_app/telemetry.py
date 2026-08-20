@@ -8,8 +8,13 @@ from contextlib import contextmanager
 from typing import Iterator
 
 from opentelemetry import metrics, trace
+from opentelemetry._logs import set_logger_provider
+from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from prometheus_client import Counter, Gauge, Histogram
@@ -23,7 +28,8 @@ SCHEDULE_BUDGET = Gauge("slate_schedule_budget_seconds", "Contract window minus 
 
 
 def configure_tracing() -> trace.Tracer:
-    provider = TracerProvider()
+    resource = Resource.create({"service.name": "slate", "deployment.environment": "judging"})
+    provider = TracerProvider(resource=resource)
     endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
     if endpoint:
         exporter = OTLPSpanExporter(endpoint=f"{endpoint.rstrip('/')}/v1/traces")
@@ -38,8 +44,36 @@ LOGGER = logging.getLogger("slate.pipeline")
 LOGGER.setLevel(logging.INFO)
 
 
+def configure_log_export() -> None:
+    endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+    if not endpoint:
+        return
+    resource = Resource.create({"service.name": "slate", "deployment.environment": "judging"})
+    provider = LoggerProvider(resource=resource)
+    provider.add_log_record_processor(
+        BatchLogRecordProcessor(OTLPLogExporter(endpoint=f"{endpoint.rstrip('/')}/v1/logs"))
+    )
+    set_logger_provider(provider)
+    LOGGER.addHandler(LoggingHandler(level=logging.INFO, logger_provider=provider))
+
+
+configure_log_export()
+
+
 def event(event_name: str, **fields: object) -> None:
-    LOGGER.info(json.dumps({"event": event_name, "timestamp_unix": time.time(), **fields}, sort_keys=True))
+    span_context = trace.get_current_span().get_span_context()
+    correlation = {}
+    if span_context.is_valid:
+        correlation = {
+            "trace_id": format(span_context.trace_id, "032x"),
+            "span_id": format(span_context.span_id, "016x"),
+        }
+    LOGGER.info(
+        json.dumps(
+            {"event": event_name, "timestamp_unix": time.time(), **correlation, **fields},
+            sort_keys=True,
+        )
+    )
 
 
 @contextmanager

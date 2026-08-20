@@ -16,7 +16,7 @@ from .models import DeliveryRecord, JeopardyResult
 from .telemetry import event, stage_span
 
 
-MODEL = os.getenv("GEMINI_MODEL", "gemini-3.6-flash")
+MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 APP_NAME = "slate"
 
 watch = LlmAgent(
@@ -75,6 +75,7 @@ def validate_agent_runtime() -> None:
         "GRAFANA_MCP_COMMAND",
         "GRAFANA_PROMETHEUS_UID",
         "GRAFANA_LOKI_UID",
+        "GRAFANA_TEMPO_UID",
     )
     missing_grafana = [name for name in grafana_required if not os.getenv(name)]
     if missing_grafana:

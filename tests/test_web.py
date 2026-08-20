@@ -10,6 +10,9 @@ def test_landing_page_exposes_truth_boundary_and_modes():
     assert "External delivery receiver is simulated" in response.text
     assert "Plain" in response.text
     assert "Technical" in response.text
+    assert "Run 20s judge proof" in response.text
+    assert "/v1/integrations/grafana/evidence" in response.text
+    assert "Grafana control tower" in response.text
 
 
 def test_metrics_expose_pipeline_series():

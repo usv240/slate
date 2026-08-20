@@ -16,17 +16,20 @@ Updated: 2026-08-20
 - [x] Light-default Plain/Technical web board
 - [x] Public Cloud Run deployment on a dedicated least-privilege runtime identity
 - [x] Vertex mode reported ready by the live health endpoint
-- [x] 17-test suite, two optional FFmpeg integration tests, and four-fault benchmark report
+- [x] 21-test suite, two optional FFmpeg integration tests, and four-fault benchmark report
+- [x] Dedicated self-hosted Grafana OSS stack on GCP with HTTPS
+- [x] Live Prometheus scrape plus OTLP Loki/Tempo ingestion
+- [x] Official `grafana/mcp-grafana` v1.1.0 with Secret Manager token
+- [x] Successful MCP PromQL and LogQL reads and human-approved annotation write
+- [x] Completed deployed ADK Watch / Diagnose / Remediate run using Grafana MCP
+- [x] Firestore production state instead of process memory
 
-## Required before Grafana-track submission
+## Release tasks before Grafana-track submission
 
-- [ ] Connect a real Grafana Cloud stack
-- [ ] Send metrics, logs and traces and show live correlation
-- [ ] Configure official `grafana/mcp-grafana` with service-account token
-- [ ] Demonstrate a complete ADK run plus MCP reads and writes (annotation, alert, incident)
-- [ ] Add durable state instead of Cloud Run process memory
+- [x] Capture the deployed Tempo MCP lookup in the acceptance artifact
+- [ ] Add one MCP-managed alert or incident beyond the verified annotation
 - [ ] Evaluate more runs, including true queue-capacity starvation
 - [ ] Evaluate Gemini diagnosis and remediation quality separately
-- [ ] Instrument Gemini/ADK calls in Grafana AI Observability
+- [ ] Instrument Gemini/ADK calls in Grafana AI Observability (recommended, not required)
 - [ ] Complete desktop/mobile visual QA when browser control is available
 - [ ] Produce and rehearse the three-minute demo

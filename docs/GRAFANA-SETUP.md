@@ -1,8 +1,10 @@
-# Live Grafana integration runbook
+# Live Grafana integration and recovery runbook
 
-SLATE's Grafana track is not eligible until this runbook has been completed and
-the resulting reads/writes are captured in the demo. Never place tokens in this
-repository or in a command transcript.
+The judging stack is live at `https://35-255-68-247.sslip.io`. It runs Grafana
+OSS, Prometheus, Loki, Tempo, Alloy, and Caddy on a dedicated GCP VM. The rules
+explicitly permit this unattended pattern with the official open-source MCP
+server and a service-account token. Never place tokens in this repository or a
+command transcript.
 
 ## Pinned runtime
 
@@ -14,9 +16,9 @@ starts it over stdio only when `GRAFANA_MCP_COMMAND` is configured.
 
 ```text
 GRAFANA_MCP_COMMAND=/usr/local/bin/mcp-grafana -t stdio
-GRAFANA_URL=https://<stack>.grafana.net
-GRAFANA_PROMETHEUS_UID=<uid from list_datasources>
-GRAFANA_LOKI_UID=<uid from list_datasources>
+GRAFANA_URL=https://35-255-68-247.sslip.io
+GRAFANA_PROMETHEUS_UID=slate-prometheus
+GRAFANA_LOKI_UID=slate-loki
 GRAFANA_TEMPO_TOOL=tempo_get-trace
 ```
 
@@ -44,14 +46,14 @@ for datasource and annotation operations requires the matching action and scope.
 
 ## Telemetry
 
-Configure the stack's OTLP endpoint and authentication headers through Secret
-Manager. Do not mark this step complete until a new Cloud Run job appears in
-Mimir, Loki, and Tempo and can be retrieved through MCP.
+The randomized OTLP route and Grafana service-account token are stored in Google
+Secret Manager. Cloud Run receives them through secret/environment bindings;
+neither appears in source or the public acceptance artifact.
 
-The application currently exposes Prometheus metrics at `/metrics`, exports spans
-when `OTEL_EXPORTER_OTLP_ENDPOINT` is present, and writes structured JSON logs to
-stdout. The final topology must route all three signals into the selected Grafana
-Cloud stack; a configured variable without a successful round-trip is not proof.
+Prometheus scrapes Cloud Run `/metrics`. Cloud Run exports structured logs and
+spans over OTLP/HTTP to Alloy, which forwards them to Loki and Tempo. The public
+health endpoint calls Gemini and executes a real MCP PromQL query; configuration
+presence alone cannot produce a passing health result.
 
 ## Acceptance evidence
 

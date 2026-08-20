@@ -39,3 +39,4 @@ def test_real_poison_input_fails(tmp_path: Path):
     result = runner.run(make_record("poison_input"))
     assert result.package_complete is False
     assert result.jobs[0].failure_class == "poison_input"
+    assert result.pending_specs == 1

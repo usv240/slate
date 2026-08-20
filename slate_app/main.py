@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import os
+import time
 import uuid
 from datetime import datetime, timezone
 
@@ -9,7 +11,14 @@ from fastapi.responses import FileResponse, Response
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
 from .gate import evaluate_jeopardy
-from .grafana_mcp import GrafanaNotConfigured, write_annotation
+from .grafana_mcp import (
+    GrafanaMcp,
+    GrafanaNotConfigured,
+    query_loki,
+    query_prometheus,
+    query_tempo,
+    write_annotation,
+)
 from .models import (
     BurnObservation,
     CreateDelivery,
@@ -25,6 +34,7 @@ from .telemetry import SCHEDULE_BUDGET, event
 app = FastAPI(title="SLATE API", version="0.2.0")
 store = DeliveryStore()
 WEB_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "app", "web"))
+_HEALTH_CACHE: dict[str, object] = {"checked_at": 0.0, "value": None}
 
 
 def _configured(*names: str) -> bool:
@@ -36,28 +46,106 @@ def landing_page() -> FileResponse:
     return FileResponse(os.path.join(WEB_ROOT, "index.html"))
 
 
-@app.get("/health")
-def health() -> dict[str, object]:
-    google_vertex = _configured("GOOGLE_CLOUD_PROJECT", "GOOGLE_CLOUD_LOCATION") and os.getenv(
+def _probe_vertex() -> bool:
+    from google import genai
+
+    client = genai.Client(
+        vertexai=True,
+        project=os.environ["GOOGLE_CLOUD_PROJECT"],
+        location=os.environ["GOOGLE_CLOUD_LOCATION"],
+    )
+    response = client.models.generate_content(
+        model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
+        contents="Reply with exactly OK.",
+    )
+    return bool(response.text)
+
+
+async def _live_integrations() -> dict[str, bool]:
+    now = time.monotonic()
+    cached = _HEALTH_CACHE.get("value")
+    if cached and now - float(_HEALTH_CACHE["checked_at"]) < 60:
+        return dict(cached)
+    google_configured = _configured("GOOGLE_CLOUD_PROJECT", "GOOGLE_CLOUD_LOCATION") and os.getenv(
         "GOOGLE_GENAI_USE_VERTEXAI", ""
     ).lower() in {"1", "true", "yes"}
-    grafana_mcp = _configured(
-        "GRAFANA_MCP_COMMAND",
-        "GRAFANA_PROMETHEUS_UID",
-        "GRAFANA_LOKI_UID",
+    grafana_configured = _configured(
+        "GRAFANA_MCP_COMMAND", "GRAFANA_URL", "GRAFANA_SERVICE_ACCOUNT_TOKEN",
+        "GRAFANA_PROMETHEUS_UID", "GRAFANA_LOKI_UID",
+        "GRAFANA_TEMPO_UID",
     )
+    google_vertex = False
+    grafana_mcp = False
+    if google_configured:
+        try:
+            google_vertex = await asyncio.to_thread(_probe_vertex)
+        except Exception:
+            google_vertex = False
+    if grafana_configured:
+        try:
+            result = await query_prometheus('up{job="slate-cloud-run"}')
+            grafana_mcp = not result["is_error"]
+        except Exception:
+            grafana_mcp = False
+    value = {"google_vertex": google_vertex, "grafana_mcp": grafana_mcp}
+    _HEALTH_CACHE.update(checked_at=now, value=value)
+    return value
+
+
+@app.get("/health")
+async def health() -> dict[str, object]:
+    live = await _live_integrations()
     return {
         "status": "healthy",
         "service": "slate",
         "telemetry": "real_pipeline_measurements",
         "delivery_endpoint": "simulated",
+        "state_backend": store.backend,
         "integrations": {
-            "google_vertex": google_vertex,
-            "grafana_mcp": grafana_mcp,
+            **live,
             "otlp_export": bool(os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")),
-            "agent_runtime_ready": google_vertex and grafana_mcp,
+            "agent_runtime_ready": live["google_vertex"] and live["grafana_mcp"],
         },
     }
+
+
+@app.get("/v1/integrations/grafana/evidence")
+async def grafana_evidence() -> dict[str, object]:
+    """Return live, read-only evidence acquired only through official Grafana MCP."""
+
+    try:
+        tools, prometheus, loki = await asyncio.gather(
+            GrafanaMcp().advertised_tools(),
+            query_prometheus('up{job="slate-cloud-run"}'),
+            query_loki('{service_name="slate"} | json'),
+        )
+    except GrafanaNotConfigured as exc:
+        raise HTTPException(503, detail={"code": "grafana_mcp_not_configured", "message": str(exc)}) from exc
+    return {
+        "data": {
+            "transport": "official_mcp_grafana_stdio",
+            "required_tools_advertised": {
+                name: name in tools
+                for name in ("query_prometheus", "query_loki_logs", "create_annotation")
+            },
+            "trace_tools_advertised": [
+                name for name in tools if "tempo" in name.lower() or "trace" in name.lower()
+            ],
+            "prometheus": prometheus,
+            "loki": loki,
+        }
+    }
+
+
+@app.get("/v1/integrations/grafana/traces/{trace_id}")
+async def grafana_trace(trace_id: str) -> dict[str, object]:
+    if len(trace_id) != 32 or any(character not in "0123456789abcdef" for character in trace_id.lower()):
+        raise HTTPException(422, detail={"code": "invalid_trace_id", "message": "Expected a 32-character hex trace ID."})
+    try:
+        result = await query_tempo(trace_id.lower())
+    except GrafanaNotConfigured as exc:
+        raise HTTPException(503, detail={"code": "grafana_mcp_not_configured", "message": str(exc)}) from exc
+    return {"data": {"transport": "official_mcp_grafana_stdio", "tempo": result}}
 
 
 @app.get("/metrics", include_in_schema=False)

@@ -1,0 +1,44 @@
+apiVersion: 1
+prune: true
+
+datasources:
+  - name: SLATE Prometheus
+    uid: slate-prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: 15s
+
+  - name: SLATE Loki
+    uid: slate-loki
+    type: loki
+    access: proxy
+    url: http://loki:3100
+    editable: false
+    jsonData:
+      derivedFields:
+        - name: TraceID
+          matcherRegex: 'trace_id[=:]"?([a-f0-9]{16,32})'
+          datasourceUid: slate-tempo
+          url: '$${__value.raw}'
+
+  - name: SLATE Tempo
+    uid: slate-tempo
+    type: tempo
+    access: proxy
+    url: http://tempo:3200
+    editable: false
+    jsonData:
+      tracesToLogsV2:
+        datasourceUid: slate-loki
+        spanStartTimeShift: -5m
+        spanEndTimeShift: 5m
+        filterByTraceID: true
+        filterBySpanID: false
+      nodeGraph:
+        enabled: true
+      serviceMap:
+        datasourceUid: slate-prometheus

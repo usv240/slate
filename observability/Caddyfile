@@ -1,0 +1,11 @@
+{$SLATE_DOMAIN} {
+  encode zstd gzip
+
+  handle_path /{$SLATE_OTLP_PATH}/* {
+    reverse_proxy alloy:4318
+  }
+
+  handle {
+    reverse_proxy grafana:3000
+  }
+}

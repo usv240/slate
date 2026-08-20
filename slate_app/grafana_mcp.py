@@ -40,7 +40,15 @@ class GrafanaMcp:
         if not command:
             raise GrafanaNotConfigured("GRAFANA_MCP_COMMAND is required; Grafana access cannot silently fall back")
         parts = shlex.split(command, posix=os.name != "nt")
-        self.parameters = StdioServerParameters(command=parts[0], args=parts[1:], env=None)
+        # mcp's stdio client intentionally forwards only a tiny default
+        # environment. Pass the Grafana credentials explicitly, while keeping
+        # unrelated Cloud Run and Google credentials out of the child process.
+        child_env = {
+            name: value
+            for name in ("GRAFANA_URL", "GRAFANA_SERVICE_ACCOUNT_TOKEN")
+            if (value := os.getenv(name))
+        }
+        self.parameters = StdioServerParameters(command=parts[0], args=parts[1:], env=child_env)
 
     @asynccontextmanager
     async def session(self) -> AsyncIterator[ClientSession]:
@@ -61,6 +69,11 @@ class GrafanaMcp:
             "content": [item.model_dump() for item in result.content],
         }
 
+    async def advertised_tools(self) -> list[str]:
+        async with self.session() as session:
+            advertised = await session.list_tools()
+        return sorted(tool.name for tool in advertised.tools)
+
 
 async def query_prometheus(query: str) -> dict[str, Any]:
     return await GrafanaMcp().call(
@@ -70,6 +83,10 @@ async def query_prometheus(query: str) -> dict[str, Any]:
             "expr": query,
             "queryType": "instant",
             "startTime": "now-1h",
+            # mcp-grafana 1.1.0 validates endTime before applying the instant
+            # query rule that marks it ignored; an explicit value avoids an
+            # empty-time parser failure while remaining valid in newer builds.
+            "endTime": "now",
         },
     )
 
@@ -90,8 +107,11 @@ async def query_tempo(trace_id: str) -> dict[str, Any]:
     # Tempo tools are proxied and can be prefixed in the advertised MCP name.
     # The environment overrides both the exact suffix and argument name if a
     # particular Grafana stack exposes a different Tempo MCP schema.
-    key = os.getenv("GRAFANA_TEMPO_TRACE_ID_KEY", "traceID")
-    return await GrafanaMcp().call(os.getenv("GRAFANA_TEMPO_TOOL", "tempo_get-trace"), {key: trace_id})
+    key = os.getenv("GRAFANA_TEMPO_TRACE_ID_KEY", "trace_id")
+    return await GrafanaMcp().call(
+        os.getenv("GRAFANA_TEMPO_TOOL", "tempo_get-trace"),
+        {key: trace_id, "datasourceUid": _required("GRAFANA_TEMPO_UID")},
+    )
 
 
 async def write_annotation(text: str, tags: list[str]) -> dict[str, Any]:

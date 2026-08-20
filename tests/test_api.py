@@ -9,7 +9,20 @@ def test_health_is_honest_about_simulated_endpoint():
     data = TestClient(app).get("/health").json()
     assert data["telemetry"] == "real_pipeline_measurements"
     assert data["delivery_endpoint"] == "simulated"
+    assert data["state_backend"] == "memory"
     assert data["integrations"]["grafana_mcp"] is False
+
+
+def test_grafana_evidence_is_unavailable_without_configuration():
+    response = TestClient(app).get("/v1/integrations/grafana/evidence")
+    assert response.status_code == 503
+    assert response.json()["detail"]["code"] == "grafana_mcp_not_configured"
+
+
+def test_trace_lookup_rejects_non_trace_identifier():
+    response = TestClient(app).get("/v1/integrations/grafana/traces/not-a-trace")
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "invalid_trace_id"
 
 
 def test_create_and_list_delivery():

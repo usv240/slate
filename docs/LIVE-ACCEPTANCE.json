@@ -1,0 +1,47 @@
+{
+  "checked_at": "2026-08-20T21:31:00Z",
+  "cloud_run_revision": "slate-delivery-slo-00013-5dj",
+  "project_url": "https://slate-delivery-slo-109051079423.us-central1.run.app",
+  "grafana_url": "https://35-255-68-247.sslip.io",
+  "health": {
+    "google_vertex": true,
+    "grafana_mcp": true,
+    "otlp_export": true,
+    "agent_runtime_ready": true
+  },
+  "mcp": {
+    "server": "official grafana/mcp-grafana",
+    "version": "1.1.0",
+    "transport": "stdio",
+    "query_prometheus": {"passed": true, "observed_up": 1},
+    "query_loki_logs": {"passed": true, "observed_service": "slate"},
+    "tempo_get-trace": {
+      "passed": true,
+      "trace_id": "15e26c25775ee2b88d90a8c4dd9d4df5",
+      "observed_root_span": "delivery.pipeline",
+      "observed_failure_mode": "poison_input"
+    },
+    "create_annotation": {"passed": true, "annotation_id": 1}
+  },
+  "deterministic_gate_proof": {
+    "delivery_id": "del_e624a777e0f4",
+    "statuses": ["degraded", "degraded", "at_risk"],
+    "burn_rates": [0.996421, 0.99664],
+    "passed": [
+      "projected_completion_after_contract",
+      "positive_burn_sustained_two_windows",
+      "work_remaining_positive"
+    ],
+    "failed": [],
+    "failure_class": "poison_input"
+  },
+  "adk_proof": {
+    "status": "completed",
+    "model": "gemini-2.5-flash",
+    "agents": ["Watch", "Diagnose", "Remediate"],
+    "decision_source": "deterministic_gate",
+    "observability_source": "grafana_mcp",
+    "requires_human": true
+  },
+  "contains_secrets": false
+}

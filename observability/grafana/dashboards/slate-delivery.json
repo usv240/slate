@@ -1,0 +1,100 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {"type": "grafana", "uid": "-- Grafana --"},
+        "enable": true,
+        "hide": false,
+        "iconColor": "red",
+        "name": "Human-approved interventions",
+        "tags": ["slate", "human-approved"],
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {"type": "prometheus", "uid": "slate-prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "orange", "value": 0}, {"color": "green", "value": 3600}]},
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 7, "w": 8, "x": 0, "y": 0},
+      "id": 1,
+      "options": {"colorMode": "background", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+      "targets": [{"editorMode": "code", "expr": "min(slate_schedule_budget_seconds)", "legendFormat": "schedule budget", "range": true, "refId": "A"}],
+      "title": "Smallest schedule budget",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "slate-prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 18, "lineInterpolation": "smooth", "lineWidth": 2, "showPoints": "never", "spanNulls": false}, "unit": "s"}, "overrides": []},
+      "gridPos": {"h": 7, "w": 16, "x": 8, "y": 0},
+      "id": 2,
+      "options": {"legend": {"calcs": ["lastNotNull"], "displayMode": "table", "placement": "right", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "targets": [{"editorMode": "code", "expr": "slate_schedule_budget_seconds", "legendFormat": "{{delivery_id}}", "range": true, "refId": "A"}],
+      "title": "Contractual schedule budget",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "slate-prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 1}, {"color": "red", "value": 4}]}}, "overrides": []},
+      "gridPos": {"h": 7, "w": 8, "x": 0, "y": 7},
+      "id": 3,
+      "options": {"colorMode": "value", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto", "wideLayout": true},
+      "targets": [{"editorMode": "code", "expr": "sum(slate_queue_depth)", "legendFormat": "pending specs", "range": true, "refId": "A"}],
+      "title": "Queue depth",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "slate-prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "bars", "fillOpacity": 70, "lineWidth": 1, "showPoints": "never"}}, "overrides": []},
+      "gridPos": {"h": 7, "w": 8, "x": 8, "y": 7},
+      "id": 4,
+      "options": {"legend": {"displayMode": "list", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "targets": [{"editorMode": "code", "expr": "increase(slate_job_failures_total[15m])", "legendFormat": "{{failure_class}}", "range": true, "refId": "A"}],
+      "title": "Failure classes · 15 minute increase",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "slate-prometheus"},
+      "fieldConfig": {"defaults": {"color": {"mode": "palette-classic"}, "custom": {"drawStyle": "line", "fillOpacity": 12, "lineWidth": 2, "showPoints": "never"}, "unit": "s"}, "overrides": []},
+      "gridPos": {"h": 7, "w": 8, "x": 16, "y": 7},
+      "id": 5,
+      "options": {"legend": {"calcs": ["mean", "max"], "displayMode": "table", "placement": "bottom", "showLegend": true}, "tooltip": {"mode": "multi", "sort": "desc"}},
+      "targets": [{"editorMode": "code", "expr": "histogram_quantile(0.95, sum by (le, spec, status) (rate(slate_job_duration_seconds_bucket[15m])))", "legendFormat": "{{spec}} · {{status}}", "range": true, "refId": "A"}],
+      "title": "Real FFmpeg p95 duration",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "loki", "uid": "slate-loki"},
+      "gridPos": {"h": 9, "w": 24, "x": 0, "y": 14},
+      "id": 6,
+      "options": {"dedupStrategy": "none", "enableInfiniteScrolling": false, "enableLogDetails": true, "prettifyLogMessage": true, "showCommonLabels": false, "showLabels": false, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": true},
+      "targets": [{"direction": "backward", "editorMode": "code", "expr": "{service_name=`slate`} | json", "queryType": "range", "refId": "A"}],
+      "title": "Pipeline and agent evidence",
+      "type": "logs"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 41,
+  "tags": ["slate", "media-delivery", "grafana-track"],
+  "templating": {"list": []},
+  "time": {"from": "now-1h", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "SLATE · contractual delivery SLO",
+  "uid": "slate-delivery-slo",
+  "version": 1
+}
