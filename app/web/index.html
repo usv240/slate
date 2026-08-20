@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SLATE — Delivery dates as SLOs</title>
+  <style>
+    :root{--paper:#f4f1e9;--ink:#17201d;--muted:#59625d;--line:#c9cdc4;--green:#146c50;--amber:#a14f09;--red:#ae2f2a;--navy:#183d4c;--white:#fffdf7;--shadow:0 18px 60px rgba(23,32,29,.10)}
+    *{box-sizing:border-box} body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,sans-serif}
+    button,input,select{font:inherit} button{cursor:pointer}.shell{max-width:1180px;margin:auto;padding:24px}
+    nav{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding:10px 0 22px}.mark{font-weight:900;letter-spacing:.22em}.mode{display:flex;border:1px solid var(--line);border-radius:99px;padding:3px;background:var(--white)}.mode button{border:0;border-radius:99px;background:transparent;padding:7px 13px;color:var(--muted)}.mode button.active{background:var(--ink);color:white}
+    header{padding:72px 0 50px;display:grid;grid-template-columns:1.35fr .65fr;gap:44px;align-items:end}.eyebrow{text-transform:uppercase;letter-spacing:.15em;color:var(--green);font-size:.76rem;font-weight:800}h1{font-family:Georgia,serif;font-size:clamp(3rem,7vw,6.7rem);line-height:.89;letter-spacing:-.055em;margin:14px 0 26px;max-width:900px}.lead{font-size:1.2rem;max-width:680px;color:var(--muted)}
+    .truth{background:var(--navy);color:white;padding:24px;border-radius:4px;box-shadow:var(--shadow)}.truth strong{display:block;font-size:1.05rem;margin-bottom:8px}.truth p{color:#d4e1e4;margin:7px 0}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#5ae0a9;margin-right:8px}.dot.sim{background:#f3ba62}
+    .bar{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);background:var(--white);margin-bottom:28px}.stat{padding:20px;border-right:1px solid var(--line)}.stat:last-child{border:0}.stat b{font-size:1.8rem;display:block}.stat span{color:var(--muted);font-size:.84rem}
+    .section-head{display:flex;align-items:end;justify-content:space-between;gap:16px;margin:50px 0 16px}h2{font-family:Georgia,serif;font-size:2rem;margin:0}.quiet{color:var(--muted);font-size:.9rem}.board{display:grid;gap:12px}.empty,.card{background:var(--white);border:1px solid var(--line);padding:22px}.card{display:grid;grid-template-columns:1.5fr repeat(4,1fr) auto;align-items:center;gap:18px}.card h3{margin:0 0 3px}.label{color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}.value{font-weight:750}.pill{display:inline-block;border-radius:99px;padding:5px 10px;background:#e4efe9;color:var(--green);font-size:.78rem;font-weight:800}.pill.degraded,.pill.at_risk{background:#f8ded9;color:var(--red)}
+    .primary{border:0;background:var(--ink);color:white;padding:10px 15px;border-radius:2px}.primary:disabled{opacity:.5}.form{display:grid;grid-template-columns:2fr 1.3fr 1fr auto;gap:10px;background:var(--white);border:1px solid var(--line);padding:18px}.form input,.form select{border:1px solid var(--line);background:white;padding:11px;color:var(--ink)}
+    .gate{margin-top:56px;background:var(--ink);color:white;padding:32px;display:grid;grid-template-columns:.75fr 1.25fr;gap:36px}.gate h2{font-size:2.3rem}.equation{font:14px/1.9 ui-monospace,SFMono-Regular,Consolas,monospace;background:#0d1513;padding:20px;color:#b9edda}.pass{color:#72ddb4}.foot{padding:36px 0;color:var(--muted);font-size:.84rem;display:flex;justify-content:space-between;gap:20px}.technical{display:none}body.tech .plain{display:none}body.tech .technical{display:block}
+    @media(max-width:850px){header,.gate{grid-template-columns:1fr}.bar{grid-template-columns:1fr}.stat{border-right:0;border-bottom:1px solid var(--line)}.card{grid-template-columns:1fr 1fr}.form{grid-template-columns:1fr}.foot{display:block}h1{font-size:4rem}}
+  </style>
+</head>
+<body>
+<main class="shell">
+  <nav><div class="mark">SLATE / DELIVERY CONTROL</div><div class="mode" aria-label="Reading mode"><button id="plain" class="active">Plain</button><button id="tech">Technical</button></div></nav>
+  <header>
+    <div><div class="eyebrow">Post-production delivery intelligence</div><h1>A deadline you cannot move deserves an SLO.</h1><p class="lead plain">SLATE watches every version of a title as it is made and warns the delivery supervisor when the remaining work will cross the contractual date—not merely when a machine fails.</p><p class="lead technical">SLATE traces ingest → rendition fan-out → QC → packaging, derives schedule budget from measured p95 work, and opens jeopardy only after the deterministic three-part gate passes.</p></div>
+    <aside class="truth"><strong>Evidence boundary</strong><p><i class="dot"></i>FFmpeg execution and telemetry are real</p><p><i class="dot"></i>Gate verdicts are deterministic</p><p><i class="dot sim"></i>External delivery receiver is simulated</p><p><i class="dot sim"></i>Grafana MCP is pending live credentials</p></aside>
+  </header>
+  <section class="bar"><div class="stat"><b id="total">0</b><span>contractual deliveries</span></div><div class="stat"><b id="risk">0</b><span>currently at risk</span></div><div class="stat"><b>Never</b><span>automatic remediation</span></div></section>
+  <section>
+    <div class="section-head"><div><div class="eyebrow">Live control board</div><h2>Every title. One immovable date.</h2></div><span class="quiet" id="updated">Waiting for API</span></div>
+    <form class="form" id="create"><input id="title" value="Public-domain launch package" required aria-label="Title"><input id="deadline" type="datetime-local" required aria-label="Contract date"><select id="fault" aria-label="Fault injection"><option value="none">Healthy run</option><option value="poison_input">Poison input</option><option value="wrong_codec">Codec fault</option><option value="timeout">Timeout</option><option value="qc_rule_change">QC rule change</option></select><button class="primary">Add delivery</button></form>
+    <div class="board" id="board"><div class="empty">No delivery records yet. Add one above; nothing is pre-seeded as live telemetry.</div></div>
+  </section>
+  <section class="gate"><div><div class="eyebrow">Decision boundary</div><h2>The model cannot move the line.</h2><p class="plain">All three facts must be true before SLATE declares jeopardy. Gemini explains evidence and proposes options; a human owns every action.</p><p class="technical">The API returns <code>gate.passed</code> and <code>gate.failed</code>. The ADK agents cannot override the pure-function verdict.</p></div><div class="equation"><span class="pass">AT_RISK</span> requires<br>projected_completion &gt; contractual_date<br>AND positive_burn sustained over 2 windows<br>AND work_remaining &gt; 0<br><br><span class="pass">AUTO_ACTION = NEVER</span></div></section>
+  <footer class="foot"><span>Built with Google ADK, Gemini on Vertex AI, Cloud Run, OpenTelemetry, and Grafana MCP.</span><span>SLATE 0.1 · engineering build</span></footer>
+</main>
+<script>
+const $=s=>document.querySelector(s); const deadline=$('#deadline'); deadline.value=new Date(Date.now()+6*3600000).toISOString().slice(0,16);
+$('#plain').onclick=()=>{document.body.classList.remove('tech');$('#plain').classList.add('active');$('#tech').classList.remove('active')};
+$('#tech').onclick=()=>{document.body.classList.add('tech');$('#tech').classList.add('active');$('#plain').classList.remove('active')};
+async function load(){const r=await fetch('/v1/deliveries');const rows=(await r.json()).data;$('#total').textContent=rows.length;$('#risk').textContent=rows.filter(x=>x.status==='at_risk').length;$('#updated').textContent='Updated '+new Date().toLocaleTimeString();$('#board').innerHTML=rows.length?rows.map(card).join(''):'<div class="empty">No delivery records yet. Add one above; nothing is pre-seeded as live telemetry.</div>'}
+function card(x){return `<article class="card"><div><h3>${escapeHtml(x.title)}</h3><span class="pill ${x.status}">${x.status.replace('_',' ')}</span></div><div><div class="label">Contract</div><div class="value">${new Date(x.contractual_date).toLocaleString()}</div></div><div><div class="label">Specs left</div><div class="value">${x.pending_specs} / ${x.specs.length}</div></div><div><div class="label">Measured p95</div><div class="value">${Number(x.p95_seconds_per_spec).toFixed(2)}s</div></div><div><div class="label">Receiver</div><div class="value">${x.simulated_delivery_accepted===null?'not sent':x.simulated_delivery_accepted?'accepted':'rejected'}*</div></div><button class="primary" onclick="run('${x.delivery_id}',this)">Run real pipeline</button></article>`}
+function escapeHtml(v){const d=document.createElement('div');d.textContent=v;return d.innerHTML}
+async function run(id,b){b.disabled=true;b.textContent='Running…';const r=await fetch(`/v1/deliveries/${id}/run`,{method:'POST'});if(!r.ok){const e=await r.json();alert(e.detail?.message||'Pipeline failed')}await load()}
+$('#create').onsubmit=async e=>{e.preventDefault();const payload={title:$('#title').value,contractual_date:new Date(deadline.value).toISOString(),penalty_tier:'priority',fault_mode:$('#fault').value,specs:[{name:'proxy',width:320,height:180,video_codec:'libx264',video_bitrate_kbps:300},{name:'review',width:640,height:360,video_codec:'libx264',video_bitrate_kbps:800}]};const r=await fetch('/v1/deliveries',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});if(!r.ok)alert('Could not create delivery');else await load()};load();
+</script>
+</body>
+</html>

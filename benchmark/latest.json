@@ -1,0 +1,224 @@
+{
+  "generated_at": "2026-08-20T16:09:19.313027+00:00",
+  "media_fixture_type": "self_authored_lavfi_source_processed_by_real_ffmpeg",
+  "delivery_receiver": "simulated",
+  "fault_results": [
+    {
+      "fault_mode": "poison_input",
+      "expected_class": "poison_input",
+      "observed_class": "poison_input",
+      "correct": true,
+      "real_pipeline_seconds": 6.354798,
+      "job": {
+        "spec_name": "proxy",
+        "status": "failed",
+        "duration_seconds": 0.1964,
+        "exit_code": 3199971767,
+        "retries": 0,
+        "output_bytes": 0,
+        "failure_class": "poison_input",
+        "qc_failures": []
+      }
+    },
+    {
+      "fault_mode": "wrong_codec",
+      "expected_class": "codec_fault",
+      "observed_class": "codec_fault",
+      "correct": true,
+      "real_pipeline_seconds": 2.261721,
+      "job": {
+        "spec_name": "proxy",
+        "status": "failed",
+        "duration_seconds": 0.279071,
+        "exit_code": 3165764104,
+        "retries": 0,
+        "output_bytes": 0,
+        "failure_class": "codec_fault",
+        "qc_failures": []
+      }
+    },
+    {
+      "fault_mode": "timeout",
+      "expected_class": "timeout",
+      "observed_class": "timeout",
+      "correct": true,
+      "real_pipeline_seconds": 5.542347,
+      "job": {
+        "spec_name": "proxy",
+        "status": "failed",
+        "duration_seconds": 1.217259,
+        "exit_code": -1,
+        "retries": 0,
+        "output_bytes": 0,
+        "failure_class": "timeout",
+        "qc_failures": []
+      }
+    },
+    {
+      "fault_mode": "qc_rule_change",
+      "expected_class": "qc_rule_change",
+      "observed_class": "qc_rule_change",
+      "correct": true,
+      "real_pipeline_seconds": 5.929977,
+      "job": {
+        "spec_name": "proxy",
+        "status": "failed",
+        "duration_seconds": 3.498183,
+        "exit_code": 0,
+        "retries": 0,
+        "output_bytes": 127826,
+        "failure_class": "qc_rule_change",
+        "qc_failures": [
+          "new_textless_element_rule"
+        ]
+      }
+    }
+  ],
+  "diagnosis_accuracy": 1.0,
+  "pipeline_duration_seconds": {
+    "median": 5.736162,
+    "max": 6.354798
+  },
+  "gate_evaluation": {
+    "fixture_type": "constructed_schedule_history",
+    "lead_time_seconds": 21600,
+    "false_jeopardy_rate": 0.0,
+    "outcomes": {
+      "transient_single_window": {
+        "verdict": "healthy",
+        "severity": "none",
+        "calculated_at": "2026-08-20T16:08:59.073739Z",
+        "delivery_window_seconds": 21600.0,
+        "work_remaining_seconds": 25200.0,
+        "schedule_budget_seconds": -3600.0,
+        "burn_rates": [
+          2.0
+        ],
+        "projected_completion": "2026-08-20T23:08:59.073739Z",
+        "hours_over": 1.0,
+        "thresholds": [
+          {
+            "name": "projected_completion_after_contract",
+            "passed": true,
+            "observed": "2026-08-20T23:08:59.073739+00:00",
+            "required": "> 2026-08-20T22:08:59.073739+00:00"
+          },
+          {
+            "name": "positive_burn_sustained_two_windows",
+            "passed": false,
+            "observed": 1,
+            "required": "2 consecutive positive windows"
+          },
+          {
+            "name": "work_remaining_positive",
+            "passed": true,
+            "observed": 25200.0,
+            "required": "> 0 seconds"
+          }
+        ],
+        "gate": {
+          "passed": [
+            "projected_completion_after_contract",
+            "work_remaining_positive"
+          ],
+          "failed": [
+            "positive_burn_sustained_two_windows"
+          ]
+        },
+        "requires_human": true
+      },
+      "sustained_two_windows": {
+        "verdict": "at_risk",
+        "severity": "critical",
+        "calculated_at": "2026-08-20T16:08:59.073739Z",
+        "delivery_window_seconds": 21600.0,
+        "work_remaining_seconds": 25200.0,
+        "schedule_budget_seconds": -3600.0,
+        "burn_rates": [
+          2.0,
+          2.0
+        ],
+        "projected_completion": "2026-08-20T23:08:59.073739Z",
+        "hours_over": 1.0,
+        "thresholds": [
+          {
+            "name": "projected_completion_after_contract",
+            "passed": true,
+            "observed": "2026-08-20T23:08:59.073739+00:00",
+            "required": "> 2026-08-20T22:08:59.073739+00:00"
+          },
+          {
+            "name": "positive_burn_sustained_two_windows",
+            "passed": true,
+            "observed": 2,
+            "required": "2 consecutive positive windows"
+          },
+          {
+            "name": "work_remaining_positive",
+            "passed": true,
+            "observed": 25200.0,
+            "required": "> 0 seconds"
+          }
+        ],
+        "gate": {
+          "passed": [
+            "projected_completion_after_contract",
+            "positive_burn_sustained_two_windows",
+            "work_remaining_positive"
+          ],
+          "failed": []
+        },
+        "requires_human": true
+      },
+      "recovering_second_window": {
+        "verdict": "healthy",
+        "severity": "none",
+        "calculated_at": "2026-08-20T16:08:59.073739Z",
+        "delivery_window_seconds": 21600.0,
+        "work_remaining_seconds": 25200.0,
+        "schedule_budget_seconds": -3600.0,
+        "burn_rates": [
+          2.0,
+          0.0
+        ],
+        "projected_completion": "2026-08-20T23:08:59.073739Z",
+        "hours_over": 1.0,
+        "thresholds": [
+          {
+            "name": "projected_completion_after_contract",
+            "passed": true,
+            "observed": "2026-08-20T23:08:59.073739+00:00",
+            "required": "> 2026-08-20T22:08:59.073739+00:00"
+          },
+          {
+            "name": "positive_burn_sustained_two_windows",
+            "passed": false,
+            "observed": 1,
+            "required": "2 consecutive positive windows"
+          },
+          {
+            "name": "work_remaining_positive",
+            "passed": true,
+            "observed": 25200.0,
+            "required": "> 0 seconds"
+          }
+        ],
+        "gate": {
+          "passed": [
+            "projected_completion_after_contract",
+            "work_remaining_positive"
+          ],
+          "failed": [
+            "positive_burn_sustained_two_windows"
+          ]
+        },
+        "requires_human": true
+      }
+    }
+  },
+  "limitations": [
+    "Schedule histories are constructed evaluation fixtures and are not labelled as production telemetry.",
+    "This benchmark evaluates deterministic fault labels, not Gemini's natural-language diagnosis quality.",
+    "The delivery receiver is simulated; ingest, transcode and QC execution are real."
+  ]
+}
