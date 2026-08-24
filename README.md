@@ -6,6 +6,9 @@ Judging deployment (Cloud Run and Vertex AI, `us-central1`): <https://slate-deli
 
 Live Grafana control tower: <https://35-255-68-247.sslip.io/d/slate-delivery/slate-delivery-control-tower?kiosk>
 
+Start with [`JUDGING.md`](JUDGING.md) and the machine-readable
+[`submission-evidence.json`](submission-evidence.json).
+
 The schedule-budget mechanic and predictive pre-miss alerting are not novel. Our documented search found standard pipeline observability, automated QC, predictive logistics alerts, and writing applying error-budget thinking to delivery. We have not confirmed whether SDVI Rally, Dalet Flex, Vidispine, or Ateme predict contractual deadline risk, and do not claim they cannot.
 
 ## Deterministic boundary

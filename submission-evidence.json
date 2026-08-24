@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "project": "SLATE",
+  "track": "Grafana",
+  "public_url": "https://slate-delivery-slo-109051079423.us-central1.run.app",
+  "repository": "https://github.com/usv240/slate",
+  "license": "Apache-2.0",
+  "google_runtime": {"status": "verified", "evidence": "/health"},
+  "partner_runtime": {"status": "verified", "technology": "official grafana/mcp-grafana", "evidence": "/v1/integrations/grafana/evidence"},
+  "telemetry": ["Prometheus", "Loki", "Tempo", "OpenTelemetry"],
+  "decision_owner": "deterministic three-threshold gate plus delivery supervisor",
+  "claims_excluded": ["real CDN receiver", "autonomous remediation", "production-scale evaluation"],
+  "submission_video": {"status": "pending_external"},
+  "devpost": {"status": "pending_external"}
+}
