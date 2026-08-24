@@ -76,6 +76,11 @@ async def _live_integrations() -> dict[str, bool]:
     )
     google_vertex = False
     grafana_mcp = False
+    state_store = False
+    try:
+        state_store = await asyncio.to_thread(store.probe)
+    except Exception:
+        state_store = False
     if google_configured:
         try:
             google_vertex = await asyncio.to_thread(_probe_vertex)
@@ -87,7 +92,11 @@ async def _live_integrations() -> dict[str, bool]:
             grafana_mcp = not result["is_error"]
         except Exception:
             grafana_mcp = False
-    value = {"google_vertex": google_vertex, "grafana_mcp": grafana_mcp}
+    value = {
+        "google_vertex": google_vertex,
+        "grafana_mcp": grafana_mcp,
+        "state_store": state_store,
+    }
     _HEALTH_CACHE.update(checked_at=now, value=value)
     return value
 
@@ -96,7 +105,7 @@ async def _live_integrations() -> dict[str, bool]:
 async def health() -> dict[str, object]:
     live = await _live_integrations()
     return {
-        "status": "healthy",
+        "status": "healthy" if all(live.values()) else "degraded",
         "service": "slate",
         "telemetry": "real_pipeline_measurements",
         "delivery_endpoint": "simulated",

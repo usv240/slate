@@ -11,6 +11,7 @@ def test_health_is_honest_about_simulated_endpoint():
     assert data["delivery_endpoint"] == "simulated"
     assert data["state_backend"] == "memory"
     assert data["integrations"]["grafana_mcp"] is False
+    assert data["integrations"]["state_store"] is True
 
 
 def test_grafana_evidence_is_unavailable_without_configuration():

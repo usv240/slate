@@ -14,13 +14,33 @@ class DeliveryStore:
         self._collection = None
         if self._collection_name:
             from google.cloud import firestore
+            from google.cloud.firestore_v1.services.firestore import FirestoreClient
 
             project = os.getenv("GOOGLE_CLOUD_PROJECT")
-            self._collection = firestore.Client(project=project).collection(self._collection_name)
+            client = firestore.Client(project=project)
+            # Cloud Run's current gRPC routing path double-encodes `(default)`
+            # as `%28default%29`. The official REST transport addresses the
+            # same Firestore API without that routing-header ambiguity.
+            transport = os.getenv("SLATE_FIRESTORE_TRANSPORT", "rest")
+            if transport == "rest":
+                client._firestore_api_internal = FirestoreClient(
+                    credentials=client._credentials,
+                    client_options=client._client_options,
+                    transport="rest",
+                )
+            self._collection = client.collection(self._collection_name)
 
     @property
     def backend(self) -> str:
         return "firestore" if self._collection is not None else "memory"
+
+    def probe(self) -> bool:
+        """Perform a real, read-only backend round trip."""
+
+        if self._collection is None:
+            return True
+        next(iter(self._collection.list_documents(page_size=1)), None)
+        return True
 
     def put(self, record: DeliveryRecord) -> DeliveryRecord:
         if self._collection is not None:
