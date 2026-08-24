@@ -1,11 +1,21 @@
 {
-  "checked_at": "2026-08-20T21:31:00Z",
-  "cloud_run_revision": "slate-delivery-slo-00013-5dj",
+  "checked_at": "2026-08-24T23:50:20Z",
+  "cloud_run_revision": "slate-delivery-slo-00016-gm7",
+  "source_commit": "f680f8e",
+  "ci": {
+    "run_id": 32790560294,
+    "passed": true,
+    "tests_passed": 28,
+    "production_container_passed": true
+  },
   "project_url": "https://slate-delivery-slo-109051079423.us-central1.run.app",
   "grafana_url": "https://35-255-68-247.sslip.io",
   "health": {
+    "status": "healthy",
     "google_vertex": true,
     "grafana_mcp": true,
+    "state_store": true,
+    "state_backend": "firestore",
     "otlp_export": true,
     "agent_runtime_ready": true
   },
@@ -13,35 +23,81 @@
     "server": "official grafana/mcp-grafana",
     "version": "1.1.0",
     "transport": "stdio",
-    "query_prometheus": {"passed": true, "observed_up": 1},
-    "query_loki_logs": {"passed": true, "observed_service": "slate"},
-    "tempo_get-trace": {
+    "query_prometheus": {
       "passed": true,
-      "trace_id": "15e26c25775ee2b88d90a8c4dd9d4df5",
-      "observed_root_span": "delivery.pipeline",
-      "observed_failure_mode": "poison_input"
+      "queries": [
+        {
+          "metric": "slate_schedule_budget_seconds",
+          "delivery_id": "del_aa4b9feffebe"
+        },
+        {
+          "metric": "slate_queue_depth",
+          "delivery_id": "del_aa4b9feffebe"
+        },
+        {
+          "expression": "sum by (failure_class) (slate_job_failures_total)"
+        }
+      ],
+      "observed_failure_class": "codec_fault",
+      "observed_failure_count": 3
     },
-    "create_annotation": {"passed": true, "annotation_id": 1}
+    "query_loki_logs": {
+      "passed": true,
+      "result": "empty_result_reported_without_invention"
+    },
+    "tempo_get_trace": {
+      "passed": true,
+      "trace_id": "721a87e2e917a17f9431e8f9dda84616",
+      "observed_root_span": "delivery.pipeline",
+      "observed_failure_mode": "wrong_codec"
+    },
+    "create_annotation": {
+      "passed": true,
+      "annotation_id": 1,
+      "evidence_checked_at": "2026-08-20T21:31:00Z"
+    }
   },
   "deterministic_gate_proof": {
-    "delivery_id": "del_e624a777e0f4",
+    "delivery_id": "del_aa4b9feffebe",
     "statuses": ["degraded", "degraded", "at_risk"],
-    "burn_rates": [0.996421, 0.99664],
+    "failure_class": "codec_fault",
+    "trace_ids": [
+      "7ccd74ed12f832a6bf1f4cc2a8fb1e3b",
+      "6643d1dbdc81cb631e65cbba9250c703",
+      "721a87e2e917a17f9431e8f9dda84616"
+    ],
+    "burn_rates": [0.998133, 0.995528],
     "passed": [
       "projected_completion_after_contract",
       "positive_burn_sustained_two_windows",
       "work_remaining_positive"
     ],
-    "failed": [],
-    "failure_class": "poison_input"
+    "failed": []
   },
   "adk_proof": {
     "status": "completed",
+    "session_id": "investigation_5851315e4da6",
     "model": "gemini-2.5-flash",
     "agents": ["Watch", "Diagnose", "Remediate"],
     "decision_source": "deterministic_gate",
     "observability_source": "grafana_mcp",
+    "bound_evidence_called_once": true,
+    "diagnosis": "codec_fault",
+    "unsupported_alternatives_rejected": [
+      "poison_input",
+      "timeout",
+      "capacity_starvation",
+      "qc_rule_change"
+    ],
+    "remediation_option_count": 3,
     "requires_human": true
   },
+  "limitations": [
+    "This is one deployed agent-quality case, not a statistical efficacy claim.",
+    "The synthetic wrong-codec fault and deadline were constructed for evaluation.",
+    "The delivery receiver remains simulated; ingest, FFmpeg, QC, telemetry and agent calls are real.",
+    "The scoped Loki query returned no lines; the agent disclosed that absence.",
+    "The failure counter is service-wide; the delivery-specific Tempo trace supplies the scoped fault evidence."
+  ],
   "contains_secrets": false
 }
