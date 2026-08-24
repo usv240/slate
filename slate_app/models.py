@@ -66,6 +66,7 @@ class DeliveryRecord(BaseModel):
     burn_observations: list[BurnObservation] = []
     package_complete: bool = False
     simulated_delivery_accepted: bool | None = None
+    last_trace_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{32}$")
 
 
 class ThresholdResult(BaseModel):

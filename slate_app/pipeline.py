@@ -125,7 +125,15 @@ class PipelineRunner:
         record.status = "running"
         record.pending_specs = len(record.specs)
         QUEUE_DEPTH.labels(delivery_id=record.delivery_id).set(record.pending_specs)
-        with stage_span("delivery.pipeline", delivery_id=record.delivery_id, title=record.title, fault_mode=record.fault_mode):
+        with stage_span(
+            "delivery.pipeline",
+            delivery_id=record.delivery_id,
+            title=record.title,
+            fault_mode=record.fault_mode,
+        ) as pipeline_span:
+            context = pipeline_span.get_span_context()
+            if context.is_valid:
+                record.last_trace_id = format(context.trace_id, "032x")
             source = self._source(directory, record.delivery_id)
             jobs: list[JobResult] = []
             with ThreadPoolExecutor(max_workers=min(4, len(record.specs))) as executor:

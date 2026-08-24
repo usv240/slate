@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import uuid
@@ -18,46 +19,6 @@ from .telemetry import event, stage_span
 
 MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 APP_NAME = "slate"
-
-watch = LlmAgent(
-    name="Watch",
-    model=MODEL,
-    instruction=(
-        "The user message contains a deterministic jeopardy result which you may not alter. "
-        "Read current schedule-budget, queue-depth, and failure metrics with query_prometheus "
-        "through Grafana MCP. Report whether Grafana evidence corroborates the gate. Do not "
-        "diagnose and do not create a verdict. Cite the exact query and returned series."
-    ),
-    tools=[query_prometheus],
-    output_key="watch_evidence",
-)
-
-diagnose = LlmAgent(
-    name="Diagnose",
-    model=MODEL,
-    instruction=(
-        "Using {watch_evidence}, correlate real Loki logs and Tempo traces through Grafana MCP. "
-        "Classify codec fault, poison input, timeout, capacity starvation, or QC rule change. "
-        "Every claim must name the MCP result that supports it. If the evidence is insufficient, "
-        "say uncertain; do not guess."
-    ),
-    tools=[query_loki, query_tempo],
-    output_key="diagnosis",
-)
-
-remediate = LlmAgent(
-    name="Remediate",
-    model=MODEL,
-    instruction=(
-        "Using {watch_evidence} and {diagnosis}, propose three options with estimated schedule "
-        "cost. Never execute, scale, requeue, annotate, or change a deadline. A delivery "
-        "supervisor owns the decision."
-    ),
-    output_key="remediation_options",
-)
-
-root_agent = SequentialAgent(name="SlateDeliverySupervisor", sub_agents=[watch, diagnose, remediate])
-
 
 class AgentRuntimeNotConfigured(RuntimeError):
     pass
@@ -82,6 +43,18 @@ def validate_agent_runtime() -> None:
         raise GrafanaNotConfigured(f"Missing Grafana MCP configuration: {', '.join(missing_grafana)}")
 
 
+def _prometheus_queries(delivery_id: str) -> dict[str, str]:
+    return {
+        "schedule_budget": f'slate_schedule_budget_seconds{{delivery_id="{delivery_id}"}}',
+        "queue_depth": f'slate_queue_depth{{delivery_id="{delivery_id}"}}',
+        "failures_by_class": "sum by (failure_class) (slate_job_failures_total)",
+    }
+
+
+def _loki_query(delivery_id: str) -> str:
+    return f'{{service_name="slate"}} | json | delivery_id="{delivery_id}"'
+
+
 async def run_investigation(
     delivery: DeliveryRecord,
     gate: JeopardyResult,
@@ -95,6 +68,74 @@ async def run_investigation(
     """
 
     validate_agent_runtime()
+    bound_evidence: dict[str, Any] = {}
+
+    async def get_bound_grafana_evidence() -> dict[str, Any]:
+        """Return exact Grafana MCP evidence bound to this delivery and trace."""
+
+        queries = _prometheus_queries(delivery.delivery_id)
+        schedule, queue, failures, logs = await asyncio.gather(
+            query_prometheus(queries["schedule_budget"]),
+            query_prometheus(queries["queue_depth"]),
+            query_prometheus(queries["failures_by_class"]),
+            query_loki(_loki_query(delivery.delivery_id)),
+        )
+        trace_result: dict[str, Any] | None = None
+        if delivery.last_trace_id:
+            trace_result = await query_tempo(delivery.last_trace_id)
+        result = {
+            "delivery_id": delivery.delivery_id,
+            "queries": queries,
+            "prometheus": {
+                "schedule_budget": schedule,
+                "queue_depth": queue,
+                "failures_by_class": failures,
+            },
+            "loki_query": _loki_query(delivery.delivery_id),
+            "loki": logs,
+            "trace_id": delivery.last_trace_id,
+            "tempo": trace_result,
+        }
+        bound_evidence.update(result)
+        return result
+
+    watch = LlmAgent(
+        name="Watch",
+        model=MODEL,
+        instruction=(
+            "The deterministic jeopardy result is immutable. You MUST call "
+            "get_bound_grafana_evidence exactly once. Report whether the returned schedule "
+            "budget and queue evidence corroborate the gate. Cite exact query names and observed "
+            "values. Do not diagnose and do not create or change a verdict."
+        ),
+        tools=[get_bound_grafana_evidence],
+        output_key="watch_evidence",
+    )
+    diagnose = LlmAgent(
+        name="Diagnose",
+        model=MODEL,
+        instruction=(
+            "Using {watch_evidence} and only its bound Prometheus, Loki, and Tempo evidence, "
+            "classify codec fault, poison input, timeout, capacity starvation, or QC rule change. "
+            "Name the specific log or trace evidence for the classification. If evidence is "
+            "insufficient, say uncertain; do not guess and do not change the gate."
+        ),
+        output_key="diagnosis",
+    )
+    remediate = LlmAgent(
+        name="Remediate",
+        model=MODEL,
+        instruction=(
+            "Using {watch_evidence} and {diagnosis}, propose exactly three bounded options with "
+            "estimated schedule cost. Never execute, scale, requeue, annotate, or change a "
+            "deadline. State that a delivery supervisor owns the decision."
+        ),
+        output_key="remediation_options",
+    )
+    root_agent = SequentialAgent(
+        name="SlateDeliverySupervisor",
+        sub_agents=[watch, diagnose, remediate],
+    )
     session_id = f"investigation_{uuid.uuid4().hex[:12]}"
     session_service = InMemorySessionService()
     initial_state = {
@@ -144,6 +185,10 @@ async def run_investigation(
         "diagnose": state.get("diagnosis"),
         "remediate": state.get("remediation_options"),
     }
+    if not bound_evidence:
+        raise RuntimeError("Watch did not retrieve its request-bound Grafana MCP evidence")
+    if any(not value for value in outputs.values()):
+        raise RuntimeError("The ADK workflow did not produce all three governed outputs")
     event(
         "agent_investigation_complete",
         delivery_id=delivery.delivery_id,
@@ -157,6 +202,7 @@ async def run_investigation(
         "model": MODEL,
         "decision_source": "deterministic_gate",
         "observability_source": "grafana_mcp",
+        "bound_evidence": bound_evidence,
         "outputs": outputs,
         "transcript": transcript,
         "requires_human": True,

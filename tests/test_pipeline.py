@@ -29,6 +29,8 @@ def test_real_ffmpeg_pipeline_passes(tmp_path: Path):
     assert result.jobs[0].status == "passed"
     assert result.jobs[0].duration_seconds > 0
     assert result.jobs[0].output_bytes > 0
+    assert result.last_trace_id is not None
+    assert len(result.last_trace_id) == 32
 
 
 def test_real_poison_input_fails(tmp_path: Path):
@@ -40,3 +42,4 @@ def test_real_poison_input_fails(tmp_path: Path):
     assert result.package_complete is False
     assert result.jobs[0].failure_class == "poison_input"
     assert result.pending_specs == 1
+    assert result.last_trace_id is not None
