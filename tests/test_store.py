@@ -5,9 +5,26 @@ def test_memory_store_probe_is_live():
     assert DeliveryStore().probe() is True
 
 
+def test_official_client_keeps_default_database_path_unescaped():
+    from google.auth.credentials import AnonymousCredentials
+    from google.cloud import firestore
+
+    client = firestore.Client(
+        project="path-contract-test",
+        credentials=AnonymousCredentials(),
+    )
+
+    assert client._database == "(default)"
+    assert client._database_string == (
+        "projects/path-contract-test/databases/(default)"
+    )
+
+
 def test_configured_store_defaults_to_official_rest_transport(monkeypatch):
     import sys
     import types
+
+    import google.cloud
 
     observed = {}
 
@@ -35,6 +52,7 @@ def test_configured_store_defaults_to_official_rest_transport(monkeypatch):
     fake_service = types.ModuleType("google.cloud.firestore_v1.services.firestore")
     fake_service.FirestoreClient = FakeApiClient
     monkeypatch.setitem(sys.modules, "google.cloud.firestore", fake_firestore)
+    monkeypatch.setattr(google.cloud, "firestore", fake_firestore)
     monkeypatch.setitem(
         sys.modules,
         "google.cloud.firestore_v1.services.firestore",
