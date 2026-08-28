@@ -8,6 +8,8 @@ from typing import Any, AsyncIterator, Iterable
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
+from .ai_telemetry import mcp_tool_span
+
 
 class GrafanaNotConfigured(RuntimeError):
     pass
@@ -58,14 +60,21 @@ class GrafanaMcp:
                 yield session
 
     async def call(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
-        async with self.session() as session:
-            advertised = await session.list_tools()
-            resolved = resolve_tool((tool.name for tool in advertised.tools), tool_name)
-            result = await session.call_tool(resolved, arguments)
+        # Every MCP call is a span and a counter, so tool activity is visible in
+        # Grafana next to the token cost of the agent that made it.
+        with mcp_tool_span(server="grafana", tool=tool_name) as span:
+            async with self.session() as session:
+                advertised = await session.list_tools()
+                resolved = resolve_tool((tool.name for tool in advertised.tools), tool_name)
+                result = await session.call_tool(resolved, arguments)
+            is_error = bool(getattr(result, "isError", False))
+            if span.is_recording():
+                span.set_attribute("mcp.tool.resolved", resolved)
+                span.set_attribute("mcp.tool.is_error", is_error)
         return {
             "requested_tool": tool_name,
             "tool": resolved,
-            "is_error": bool(getattr(result, "isError", False)),
+            "is_error": is_error,
             "content": [item.model_dump() for item in result.content],
         }
 

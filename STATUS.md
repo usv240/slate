@@ -1,6 +1,6 @@
 # SLATE implementation status
 
-Updated: 2026-08-24
+Updated: 2026-08-28
 
 ## Complete baseline
 
@@ -33,6 +33,6 @@ Updated: 2026-08-24
 - [ ] Add one MCP-managed alert or incident beyond the verified annotation
 - [ ] Evaluate more runs, including true queue-capacity starvation
 - [ ] Expand the Gemini quality evaluation beyond the one deployed wrong-codec case
-- [ ] Instrument Gemini/ADK calls in Grafana AI Observability (recommended, not required)
+- [x] Instrument Gemini/ADK calls in Grafana AI Observability: OpenTelemetry gen_ai.* spans and Prometheus counters for per-agent token usage, operation duration and MCP tool activity, read back through the official Grafana MCP server at /v1/integrations/grafana/ai-observability
 - [ ] Complete desktop/mobile visual QA when browser control is available
 - [ ] Produce and rehearse the three-minute demo

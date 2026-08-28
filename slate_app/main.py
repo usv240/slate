@@ -146,6 +146,54 @@ async def grafana_evidence() -> dict[str, object]:
     }
 
 
+@app.get("/v1/integrations/grafana/ai-observability")
+async def grafana_ai_observability() -> dict[str, object]:
+    """Ask Grafana what the agents themselves cost.
+
+    SLATE's agents read the delivery pipeline through Grafana MCP. This closes
+    the loop: the same MCP server is asked for the agents' own OpenTelemetry
+    GenAI telemetry -- token usage by sub-agent, operation latency, and MCP tool
+    activity -- so the system that watches the pipeline is itself watched.
+
+    These series are emitted by slate_app/ai_telemetry.py using the gen_ai.*
+    semantic conventions, which is what Grafana Cloud AI Observability consumes.
+    """
+
+    queries = {
+        "tokens_by_agent": "sum by (agent, token_type) (slate_gen_ai_tokens_total)",
+        # Mean, not p95: investigations are rare events, and a quantile over a
+        # rate() window is undefined until several land inside it. An all-time
+        # mean is a number that means what it says at this volume.
+        "agent_mean_seconds": (
+            "sum by (agent) (slate_gen_ai_operation_duration_seconds_sum) "
+            "/ sum by (agent) (slate_gen_ai_operation_duration_seconds_count)"
+        ),
+        "mcp_tool_calls": "sum by (tool, outcome) (slate_mcp_tool_calls_total)",
+        "mcp_tool_mean_seconds": (
+            "sum by (tool) (slate_mcp_tool_duration_seconds_sum) "
+            "/ sum by (tool) (slate_mcp_tool_duration_seconds_count)"
+        ),
+    }
+    try:
+        results = await asyncio.gather(*(query_prometheus(expr) for expr in queries.values()))
+    except GrafanaNotConfigured as exc:
+        raise HTTPException(
+            503, detail={"code": "grafana_mcp_not_configured", "message": str(exc)}
+        ) from exc
+    return {
+        "data": {
+            "transport": "official_mcp_grafana_stdio",
+            "convention": "opentelemetry gen_ai.* semantic conventions",
+            "queries": queries,
+            "results": dict(zip(queries.keys(), results)),
+            "note": (
+                "Emitted by the agent runtime itself. Empty series mean no investigation "
+                "has run in this window, not that instrumentation is absent."
+            ),
+        }
+    }
+
+
 @app.get("/v1/integrations/grafana/traces/{trace_id}")
 async def grafana_trace(trace_id: str) -> dict[str, object]:
     if len(trace_id) != 32 or any(character not in "0123456789abcdef" for character in trace_id.lower()):

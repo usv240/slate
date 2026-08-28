@@ -68,6 +68,14 @@
     .ab-list{margin:.15rem 0 .6rem;padding-left:1.1rem}
     .ab-list li{margin-bottom:.3rem}
     .ab-code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.79rem;background:var(--paper);border:1px solid var(--line);border-radius:3px;padding:.05em .3em;word-break:break-word}
+    .cost-strip{border-top:1px solid var(--line)}
+    .costgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+    .costcell{background:var(--white);padding:.75rem .9rem}
+    .costcell.total{background:var(--paper)}
+    .costname{font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700}
+    .costbig{font:1.4rem/1.2 Georgia,serif;margin:.15rem 0}
+    .costcell small{color:var(--muted);font-size:.72rem}
+    .costlink{display:inline-block;margin-top:.7rem;font-size:.78rem;color:var(--navy)}
   </style>
 </head>
 <body>
@@ -212,6 +220,30 @@ function renderInvestigation(payload){
   });
   box.append(chain);
 
+  const usage=r.token_usage;
+  if(usage&&usage.by_agent&&Object.keys(usage.by_agent).length){
+    const cost=mkel('div',undefined,'evid cost-strip');
+    cost.append(mkel('h4','What this investigation cost — the agent’s own OpenTelemetry gen_ai.* telemetry, read back through the same Grafana MCP server'));
+    const grid=mkel('div',undefined,'costgrid');
+    Object.entries(usage.by_agent).forEach(([agent,counts])=>{
+      const c=mkel('div',undefined,'costcell');
+      c.append(mkel('div',agent,'costname'));
+      c.append(mkel('div',(counts.input+counts.output).toLocaleString(),'costbig'));
+      c.append(mkel('small',counts.input.toLocaleString()+' in · '+counts.output.toLocaleString()+' out'));
+      grid.append(c);
+    });
+    const total=mkel('div',undefined,'costcell total');
+    total.append(mkel('div','investigation total','costname'));
+    total.append(mkel('div',(usage.input_tokens+usage.output_tokens).toLocaleString(),'costbig'));
+    total.append(mkel('small','tokens on '+(r.model||'gemini')));
+    grid.append(total);
+    cost.append(grid);
+    const link=mkel('a','Query these series through Grafana MCP ↗');
+    link.href='/v1/integrations/grafana/ai-observability';link.target='_blank';link.rel='noreferrer';
+    link.className='costlink';
+    cost.append(link);
+    box.append(cost);
+  }
   const foot=mkel('div',undefined,'invfoot');
   foot.append(mkel('span','The gate already decided. These agents explain the decision and offer options; approving one is a human action recorded as a Grafana annotation.','small'));
   box.append(foot);

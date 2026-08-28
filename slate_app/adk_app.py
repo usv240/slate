@@ -14,6 +14,7 @@ from google.genai import types
 
 from .grafana_mcp import GrafanaNotConfigured, query_loki, query_prometheus, query_tempo
 from .models import DeliveryRecord, JeopardyResult
+from .ai_telemetry import genai_span, record_usage
 from .telemetry import event, stage_span
 
 
@@ -158,22 +159,39 @@ async def run_investigation(
     )
     message = types.Content(role="user", parts=[types.Part(text=prompt)])
     transcript: list[dict[str, str]] = []
+    usage_by_agent: dict[str, dict[str, int]] = {}
     with stage_span("agent.investigation", delivery_id=delivery.delivery_id, session_id=session_id):
-        async for agent_event in runner.run_async(
-            user_id=operator_id,
+        # One GenAI span per investigation, with per-sub-agent token usage recorded
+        # as each agent reports it, so Grafana can be asked what this cost.
+        with genai_span(
+            agent=APP_NAME,
+            model=MODEL,
+            delivery_id=delivery.delivery_id,
             session_id=session_id,
-            new_message=message,
-        ):
-            content = getattr(agent_event, "content", None)
-            parts = getattr(content, "parts", None) or []
-            text_parts = [part.text for part in parts if getattr(part, "text", None)]
-            if text_parts:
-                transcript.append(
-                    {
-                        "author": str(getattr(agent_event, "author", "agent")),
-                        "text": "\n".join(text_parts),
-                    }
-                )
+        ) as span:
+            async for agent_event in runner.run_async(
+                user_id=operator_id,
+                session_id=session_id,
+                new_message=message,
+            ):
+                author = str(getattr(agent_event, "author", "agent"))
+                usage = getattr(agent_event, "usage_metadata", None)
+                if usage is not None:
+                    counts = record_usage(span, agent=author, model=MODEL, usage=usage)
+                    running = usage_by_agent.setdefault(author, {"input": 0, "output": 0, "total": 0})
+                    for key, value in counts.items():
+                        running[key] += value
+                content = getattr(agent_event, "content", None)
+                parts = getattr(content, "parts", None) or []
+                text_parts = [part.text for part in parts if getattr(part, "text", None)]
+                if text_parts:
+                    transcript.append({"author": author, "text": chr(10).join(text_parts)})
+            span.set_attribute(
+                "gen_ai.usage.input_tokens", sum(v["input"] for v in usage_by_agent.values())
+            )
+            span.set_attribute(
+                "gen_ai.usage.output_tokens", sum(v["output"] for v in usage_by_agent.values())
+            )
     completed = await session_service.get_session(
         app_name=APP_NAME,
         user_id=operator_id,
@@ -195,9 +213,17 @@ async def run_investigation(
         session_id=session_id,
         model=MODEL,
         output_count=len([value for value in outputs.values() if value]),
+        input_tokens=sum(item["input"] for item in usage_by_agent.values()),
+        output_tokens=sum(item["output"] for item in usage_by_agent.values()),
     )
     return {
         "status": "completed",
+        "token_usage": {
+            "by_agent": usage_by_agent,
+            "input_tokens": sum(item["input"] for item in usage_by_agent.values()),
+            "output_tokens": sum(item["output"] for item in usage_by_agent.values()),
+            "note": "recorded as OpenTelemetry gen_ai.* attributes and Prometheus counters",
+        },
         "session_id": session_id,
         "model": MODEL,
         "decision_source": "deterministic_gate",
