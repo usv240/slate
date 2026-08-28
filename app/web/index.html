@@ -17,6 +17,57 @@
     .actions{display:flex;gap:7px;flex-wrap:wrap}.links{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px}.links a{color:#d4e1e4}.proof{margin-top:12px;background:#0d1513;color:#b9edda;padding:18px;max-height:340px;overflow:auto;white-space:pre-wrap;font:12px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace}.proof[hidden]{display:none}
     .gate{margin-top:56px;background:var(--ink);color:white;padding:32px;display:grid;grid-template-columns:.75fr 1.25fr;gap:36px}.gate h2{font-size:2.3rem}.equation{font:14px/1.9 ui-monospace,SFMono-Regular,Consolas,monospace;background:#0d1513;padding:20px;color:#b9edda}.pass{color:#72ddb4}.foot{padding:36px 0;color:var(--muted);font-size:.84rem;display:flex;justify-content:space-between;gap:20px}.technical{display:none}body.tech .plain{display:none}body.tech .technical{display:block}
     @media(max-width:850px){header,.gate{grid-template-columns:1fr}.bar{grid-template-columns:1fr}.stat{border-right:0;border-bottom:1px solid var(--line)}.card{grid-template-columns:1fr 1fr}.form{grid-template-columns:1fr}.foot{display:block}h1{font-size:4rem}}
+    /* --- investigation view --- */
+    .inv{margin-top:14px;background:var(--white);border:1px solid var(--line);border-radius:4px;box-shadow:var(--shadow);overflow:hidden}
+    .inv[hidden]{display:none}
+    .invhead{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;padding:16px 20px;border-bottom:1px solid var(--line)}
+    .invhead h3{margin:0;font-family:Georgia,serif;font-size:1.25rem}
+    .pillrow{display:flex;gap:.4rem;flex-wrap:wrap}
+    .mini{font-size:.68rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--line);border-radius:999px;padding:.25rem .6rem;color:var(--muted);background:var(--paper)}
+    .mini.ok{border-color:var(--green);color:var(--green)}
+    .mini.warn{border-color:var(--amber);color:var(--amber)}
+
+    .gaterow{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border-bottom:1px solid var(--line)}
+    .gcell{background:var(--white);padding:14px 20px}
+    .gcell .gname{font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.3rem}
+    .gcell .gval{font-weight:800;display:flex;align-items:center;gap:.4rem}
+    .tick{display:inline-grid;place-items:center;width:17px;height:17px;border-radius:50%;font-size:.65rem;color:#fff;background:var(--green)}
+    .tick.no{background:var(--muted)}
+    .gcell small{display:block;color:var(--muted);font-size:.72rem;margin-top:.25rem;word-break:break-word}
+
+    .evid{padding:18px 20px;border-bottom:1px solid var(--line)}
+    .evid h4,.chain h4{margin:0 0 .7rem;font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+    .q{display:grid;grid-template-columns:auto 1fr auto;gap:.8rem;align-items:center;padding:.55rem 0;border-bottom:1px solid var(--line)}
+    .q:last-child{border-bottom:0}
+    .qsrc{font-size:.62rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:.22rem .5rem;border-radius:4px;background:var(--navy);color:#fff;white-space:nowrap}
+    .qsrc.loki{background:#7a5c17}.qsrc.tempo{background:#5a2f6b}
+    .q code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.76rem;color:var(--ink);word-break:break-all}
+    .qv{font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .qv.neg{color:var(--red)}
+    .qv.none{color:var(--muted);font-weight:600;font-size:.8rem}
+
+    .chain{padding:18px 20px;display:grid;gap:12px}
+    .agent{border:1px solid var(--line);border-radius:4px;overflow:hidden}
+    .agenthead{display:flex;align-items:center;gap:.6rem;padding:.6rem .9rem;background:var(--paper);border-bottom:1px solid var(--line)}
+    .anum{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:.7rem;font-weight:800}
+    .agenthead b{font-size:.86rem}
+    .agenthead span{margin-left:auto;font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+    .agentbody{padding:.9rem;font-size:.87rem;line-height:1.6;white-space:pre-wrap;max-height:260px;overflow:auto}
+    .agentbody strong{font-weight:800}
+
+    .invfoot{padding:14px 20px;display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:center;background:var(--paper);border-top:1px solid var(--line)}
+    .invfoot .small{color:var(--muted);font-size:.8rem;max-width:60ch}
+    .raw{margin:0 20px 18px}
+    .raw summary{cursor:pointer;font-size:.78rem;color:var(--muted)}
+    .raw pre{margin:.6rem 0 0;background:#0d1513;color:#b9edda;padding:14px;max-height:300px;overflow:auto;white-space:pre-wrap;font:11.5px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace}
+    @media(max-width:850px){.gaterow{grid-template-columns:1fr}.q{grid-template-columns:1fr;gap:.3rem}}
+    .agentbody{padding:.9rem;font-size:.87rem;line-height:1.6;max-height:280px;overflow:auto;white-space:normal}
+    .ab-h{font-weight:800;font-size:.74rem;text-transform:uppercase;letter-spacing:.07em;color:var(--navy);margin:.9rem 0 .35rem}
+    .ab-h:first-child{margin-top:0}
+    .ab-p{margin:0 0 .55rem}
+    .ab-list{margin:.15rem 0 .6rem;padding-left:1.1rem}
+    .ab-list li{margin-bottom:.3rem}
+    .ab-code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.79rem;background:var(--paper);border:1px solid var(--line);border-radius:3px;padding:.05em .3em;word-break:break-word}
   </style>
 </head>
 <body>
@@ -31,6 +82,7 @@
     <div class="section-head"><div><div class="eyebrow">Live control board</div><h2>Every title. One immovable date.</h2></div><span class="quiet" id="updated">Waiting for API</span></div>
     <form class="form" id="create"><input id="title" value="Public-domain launch package" required aria-label="Title"><input id="deadline" type="datetime-local" required aria-label="Contract date"><select id="fault" aria-label="Fault injection"><option value="none">Healthy run</option><option value="poison_input">Poison input</option><option value="wrong_codec">Codec fault</option><option value="timeout">Timeout</option><option value="qc_rule_change">QC rule change</option></select><button class="primary">Add delivery</button><button class="secondary" id="proofButton" type="button">Run 20s judge proof</button></form>
     <div class="board" id="board"><div class="empty">No delivery records yet. Add one above; nothing is pre-seeded as live telemetry.</div></div>
+    <section class="inv" id="inv" hidden aria-live="polite"></section>
     <pre class="proof" id="proof" hidden aria-live="polite"></pre>
   </section>
   <section class="gate"><div><div class="eyebrow">Decision boundary</div><h2>The model cannot move the line.</h2><p class="plain">All three facts must be true before SLATE declares jeopardy. Gemini explains evidence and proposes options; a human owns every action.</p><p class="technical">The API returns <code>gate.passed</code> and <code>gate.failed</code>. The ADK agents cannot override the pure-function verdict.</p></div><div class="equation"><span class="pass">AT_RISK</span> requires<br>projected_completion &gt; contractual_date<br>AND positive_burn sustained over 2 windows<br>AND work_remaining &gt; 0<br><br><span class="pass">AUTO_ACTION = NEVER</span></div></section>
@@ -44,11 +96,137 @@ async function load(){const r=await fetch('/v1/deliveries');const rows=(await r.
 function card(x){const risk=x.status==='at_risk'?`<button class="secondary" onclick="investigate('${x.delivery_id}',this)">Ask ADK agents</button><button class="secondary" onclick="approve('${x.delivery_id}',this)">Approve +1 worker</button>`:'';return `<article class="card"><div><h3>${escapeHtml(x.title)}</h3><span class="pill ${x.status}">${x.status.replace('_',' ')}</span></div><div><div class="label">Contract</div><div class="value">${new Date(x.contractual_date).toLocaleString()}</div></div><div><div class="label">Specs left</div><div class="value">${x.pending_specs} / ${x.specs.length}</div></div><div><div class="label">Measured p95</div><div class="value">${Number(x.p95_seconds_per_spec).toFixed(2)}s</div></div><div><div class="label">Receiver</div><div class="value">${x.simulated_delivery_accepted===null?'not sent':x.simulated_delivery_accepted?'accepted':'rejected'}*</div></div><div class="actions"><button class="primary" onclick="run('${x.delivery_id}',this)">Run real pipeline</button>${risk}</div></article>`}
 function escapeHtml(v){const d=document.createElement('div');d.textContent=v;return d.innerHTML}
 async function run(id,b){b.disabled=true;b.textContent='Running…';const r=await fetch(`/v1/deliveries/${id}/run`,{method:'POST'});if(!r.ok){const e=await r.json();alert(e.detail?.message||'Pipeline failed')}await load()}
+const GRAFANA='https://35-255-68-247.sslip.io';
+function mkel(tag,text,cls){const n=document.createElement(tag);if(text!==undefined&&text!==null)n.textContent=text;if(cls)n.className=cls;return n}
+function promValue(block){
+  try{
+    const raw=JSON.parse(block.content[0].text);
+    const series=raw.data||[];
+    if(!series.length)return null;
+    if(series.length===1)return series[0].value[1];
+    return series.map(s=>{
+      const label=Object.values(s.metric).filter(v=>v&&v!=='slate_job_failures_total')[0]||'series';
+      return label+'='+s.value[1];
+    }).join(', ');
+  }catch(e){return null}
+}
+function rowCount(block){
+  try{const raw=JSON.parse(block.content[0].text);return (raw.data||[]).length}catch(e){return 0}
+}
+function evidenceRow(host,src,query,value,href){
+  const q=mkel('div',undefined,'q');
+  q.append(mkel('span',src,'qsrc '+src.toLowerCase()));
+  const c=mkel('code',query);
+  if(href){const a=mkel('a');a.href=href;a.target='_blank';a.rel='noreferrer';a.append(c);q.append(a)}else{q.append(c)}
+  const v=mkel('span',value===null||value===undefined?'no rows returned':String(value),'qv'+(value===null||value===undefined?' none':(String(value).startsWith('-')?' neg':'')));
+  q.append(v);host.append(q);
+}
+function agentBody(text){
+  const host=mkel('div',undefined,'agentbody');
+  let list=null;
+  text.split(/\r?\n/).forEach(line=>{
+    const t=line.trim();
+    if(!t){list=null;return}
+    const h=t.match(/^#{1,6}\s+(.*)$/);
+    if(h){list=null;host.append(mkel('div',h[1].replace(/[*`]/g,''),'ab-h'));return}
+    const b=t.match(/^[*-]\s+(.*)$/)||t.match(/^\d+\.\s+(.*)$/);
+    if(b){
+      if(!list){list=mkel('ul',undefined,'ab-list');host.append(list)}
+      const li=mkel('li');li.append(inline(b[1]));list.append(li);return;
+    }
+    list=null;
+    const p=mkel('p',undefined,'ab-p');p.append(inline(t));host.append(p);
+  });
+  return host;
+}
+function inline(text){
+  const frag=document.createDocumentFragment();
+  text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).forEach(part=>{
+    if(!part)return;
+    if(part.startsWith('**')&&part.endsWith('**'))frag.append(mkel('strong',part.slice(2,-2)));
+    else if(part.startsWith('`')&&part.endsWith('`'))frag.append(mkel('code',part.slice(1,-1),'ab-code'));
+    else frag.append(document.createTextNode(part));
+  });
+  return frag;
+}
+function renderInvestigation(payload){
+  const box=$('#inv');box.hidden=false;box.replaceChildren();
+  const r=payload.data||{};const gate=payload.gate||{};
+  const be=r.bound_evidence||{};
+
+  const head=mkel('div',undefined,'invhead');
+  head.append(mkel('h3','Why this delivery is in jeopardy'));
+  const pills=mkel('div',undefined,'pillrow');
+  pills.append(mkel('span','verdict: '+(gate.verdict||'—'),'mini warn'));
+  pills.append(mkel('span','decision: '+(r.decision_source||'—'),'mini ok'));
+  pills.append(mkel('span',r.observability_source||'—','mini'));
+  pills.append(mkel('span',r.model||'—','mini'));
+  pills.append(mkel('span','human required','mini warn'));
+  head.append(pills);box.append(head);
+
+  const grow=mkel('div',undefined,'gaterow');
+  (gate.thresholds||[]).forEach(t=>{
+    const c=mkel('div',undefined,'gcell');
+    c.append(mkel('div',t.name.replace(/_/g,' '),'gname'));
+    const v=mkel('div',undefined,'gval');
+    v.append(mkel('span',t.passed?'✓':'·','tick'+(t.passed?'':' no')));
+    v.append(mkel('span',t.passed?'met':'not met'));
+    c.append(v);
+    c.append(mkel('small','observed '+t.observed+' · requires '+t.required));
+    grow.append(c);
+  });
+  box.append(grow);
+
+  const ev=mkel('div',undefined,'evid');
+  ev.append(mkel('h4','Evidence the agents were bound to — read live through the official Grafana MCP server'));
+  const qs=be.queries||{};const prom=be.prometheus||{};
+  Object.keys(qs).forEach(k=>{
+    const block=prom[k];
+    evidenceRow(ev,'PromQL',qs[k],block?promValue(block):null,
+      GRAFANA+'/explore?left='+encodeURIComponent(JSON.stringify({queries:[{expr:qs[k]}]})));
+  });
+  if(be.loki_query){
+    const n=be.loki?rowCount(be.loki):0;
+    evidenceRow(ev,'LogQL',be.loki_query,n?n+' entries':null);
+  }
+  if(be.trace_id){
+    evidenceRow(ev,'Tempo','trace '+be.trace_id,be.tempo&&!be.tempo.is_error?'span tree returned':null,
+      GRAFANA+'/explore?left='+encodeURIComponent(JSON.stringify({queries:[{query:be.trace_id}]})));
+  }
+  box.append(ev);
+
+  const chain=mkel('div',undefined,'chain');
+  chain.append(mkel('h4','Google ADK agents — each reads the bound evidence, none can change the verdict'));
+  const outs=r.outputs||{};
+  [['Watch','watch','corroborate or contradict the gate'],
+   ['Diagnose','diagnose','classify the fault from logs and traces'],
+   ['Remediate','remediate','propose options for a human']].forEach((spec,i)=>{
+    const text=outs[spec[1]];
+    if(!text)return;
+    const a=mkel('div',undefined,'agent');
+    const h=mkel('div',undefined,'agenthead');
+    h.append(mkel('span',String(i+1),'anum'),mkel('b',spec[0]),mkel('span',spec[2]));
+    a.append(h);
+    a.append(agentBody(text));
+    chain.append(a);
+  });
+  box.append(chain);
+
+  const foot=mkel('div',undefined,'invfoot');
+  foot.append(mkel('span','The gate already decided. These agents explain the decision and offer options; approving one is a human action recorded as a Grafana annotation.','small'));
+  box.append(foot);
+
+  const raw=mkel('details',undefined,'raw');
+  raw.append(mkel('summary','Inspect the raw MCP payload'));
+  const pre=mkel('pre',JSON.stringify(payload,null,2));
+  raw.append(pre);box.append(raw);
+  box.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
 function showProof(label,data){const p=$('#proof');p.hidden=false;p.textContent=label+'\n\n'+JSON.stringify(data,null,2);p.scrollIntoView({behavior:'smooth',block:'nearest'})}
-async function investigate(id,b){b.disabled=true;b.textContent='Agents investigating…';const r=await fetch(`/v1/jeopardy/${id}/investigate`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({operator_id:'web-judge'})});const data=await r.json();showProof('GOOGLE ADK + GRAFANA MCP INVESTIGATION',data);b.disabled=false;b.textContent='Ask ADK agents'}
+async function investigate(id,b){b.disabled=true;b.textContent='Agents investigating…';const r=await fetch(`/v1/jeopardy/${id}/investigate`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({operator_id:'web-judge'})});const data=await r.json();if(r.ok&&data.data&&data.data.outputs){renderInvestigation(data)}else{showProof('AGENT ABSTAINED — DETERMINISTIC GATE NOT PASSED',data)}b.disabled=false;b.textContent='Ask ADK agents'}
 async function approve(id,b){b.disabled=true;const r=await fetch(`/v1/deliveries/${id}/remediation`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'increase_workers',operator_id:'web-judge',approved:true})});const data=await r.json();showProof('HUMAN APPROVAL + GRAFANA ANNOTATION',data);await load()}
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-$('#proofButton').onclick=async()=>{const b=$('#proofButton');b.disabled=true;try{showProof('JUDGE PROOF','Creating a near-deadline delivery with a controlled poison input…');const payload={title:'Judge proof: premiere package',contractual_date:new Date(Date.now()+12000).toISOString(),penalty_tier:'premiere',fault_mode:'poison_input',specs:[{name:'festival',width:640,height:360,video_codec:'libx264',video_bitrate_kbps:800}]};const created=await fetch('/v1/deliveries',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)}).then(r=>r.json());const id=created.data.delivery_id;let result;for(let n=1;n<=3;n++){showProof('JUDGE PROOF',`Real FFmpeg observation ${n}/3…`);result=await fetch(`/v1/deliveries/${id}/run`,{method:'POST'}).then(r=>r.json());if(n<3)await pause(5200)}showProof('DETERMINISTIC GATE',result);await load();if(result.jeopardy.verdict==='at_risk'){const report=await fetch(`/v1/jeopardy/${id}/investigate`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({operator_id:'web-judge'})}).then(r=>r.json());showProof('GOOGLE ADK + LIVE GRAFANA MCP',report)}}catch(error){showProof('PROOF FAILED',{message:error.message})}finally{b.disabled=false}};
+$('#proofButton').onclick=async()=>{const b=$('#proofButton');b.disabled=true;try{showProof('JUDGE PROOF','Creating a near-deadline delivery with a controlled poison input…');const payload={title:'Judge proof: premiere package',contractual_date:new Date(Date.now()+12000).toISOString(),penalty_tier:'premiere',fault_mode:'poison_input',specs:[{name:'festival',width:640,height:360,video_codec:'libx264',video_bitrate_kbps:800}]};const created=await fetch('/v1/deliveries',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)}).then(r=>r.json());const id=created.data.delivery_id;let result;for(let n=1;n<=3;n++){showProof('JUDGE PROOF',`Real FFmpeg observation ${n}/3…`);result=await fetch(`/v1/deliveries/${id}/run`,{method:'POST'}).then(r=>r.json());if(n<3)await pause(5200)}showProof('DETERMINISTIC GATE',result);await load();if(result.jeopardy.verdict==='at_risk'){const report=await fetch(`/v1/jeopardy/${id}/investigate`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({operator_id:'web-judge'})}).then(r=>r.json());if(report.data&&report.data.outputs){$('#proof').hidden=true;renderInvestigation(report)}else{showProof('AGENT ABSTAINED',report)}}}catch(error){showProof('PROOF FAILED',{message:error.message})}finally{b.disabled=false}};
 $('#create').onsubmit=async e=>{e.preventDefault();const payload={title:$('#title').value,contractual_date:new Date(deadline.value).toISOString(),penalty_tier:'priority',fault_mode:$('#fault').value,specs:[{name:'proxy',width:320,height:180,video_codec:'libx264',video_bitrate_kbps:300},{name:'review',width:640,height:360,video_codec:'libx264',video_bitrate_kbps:800}]};const r=await fetch('/v1/deliveries',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});if(!r.ok)alert('Could not create delivery');else await load()};load();
 </script>
 </body>
