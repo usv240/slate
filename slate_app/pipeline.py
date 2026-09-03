@@ -8,11 +8,35 @@ import shutil
 import subprocess
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .classify import classify, is_retryable
 from .models import DeliveryRecord, JobResult, RenditionSpec
 from .telemetry import JOB_DURATION, JOB_FAILURES, JOB_RETRIES, QUEUE_DEPTH, event, stage_span
+
+
+DEFAULT_QC_RULES = ("resolution", "codec")
+
+
+@dataclass
+class JobPlan:
+    """What this job will actually execute.
+
+    The requested scenario is consumed here, once, and turned into real
+    configuration: a real input path, a real encoder name, a real timeout, a real
+    QC rule set. After this object is built nothing downstream may look at the
+    scenario again, so the failure class can only come from observed output.
+    """
+
+    spec: RenditionSpec
+    input_path: Path
+    output_path: Path
+    codec: str
+    timeout_seconds: float
+    qc_rules: tuple[str, ...] = DEFAULT_QC_RULES
+    extra_inputs: dict[str, bytes] = field(default_factory=dict)
 
 
 class PipelineRunner:
@@ -43,6 +67,52 @@ class PipelineRunner:
             event("ingest_complete", delivery_id=delivery_id, bytes=source.stat().st_size, sha256=checksum)
         return source
 
+    def plan(self, record: DeliveryRecord, source: Path) -> list[JobPlan]:
+        """Turn the requested scenario into real job configuration.
+
+        This is the only place in the measurement path that reads
+        `record.fault_mode`. Everything after it observes consequences.
+        """
+
+        scenario = record.fault_mode
+        plans: list[JobPlan] = []
+        for index, spec in enumerate(record.specs):
+            first = index == 0
+            input_path = source
+            codec = spec.video_codec
+            timeout = 60.0
+            qc_rules = tuple(record.qc_rules or DEFAULT_QC_RULES)
+            extra: dict[str, bytes] = {}
+
+            if first and scenario == "poison_input":
+                # A real unreadable file on disk, not a flag.
+                input_path = source.parent / "poison.bin"
+                extra[input_path.name] = b"not a media file\x00\x01" * 64
+            elif first and scenario == "wrong_codec":
+                # A real encoder name this FFmpeg build does not have.
+                codec = "encoder_that_does_not_exist"
+            elif first and scenario == "timeout":
+                # A real deadline the encode cannot meet.
+                timeout = 0.001
+            elif first and scenario == "qc_rule_change":
+                # A real additional conformance rule this asset cannot satisfy,
+                # exactly as a distributor tightening its spec would impose.
+                if "textless_elements" not in qc_rules:
+                    qc_rules = qc_rules + ("textless_elements",)
+
+            plans.append(
+                JobPlan(
+                    spec=spec,
+                    input_path=input_path,
+                    output_path=source.parent / f"{spec.name}.mp4",
+                    codec=codec,
+                    timeout_seconds=timeout,
+                    qc_rules=qc_rules,
+                    extra_inputs=extra,
+                )
+            )
+        return plans
+
     def _probe(self, output: Path) -> dict[str, object]:
         if self.ffprobe:
             process = self._run([self.ffprobe, "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=codec_name,width,height", "-of", "json", str(output)])
@@ -59,65 +129,126 @@ class PipelineRunner:
             return {}
         return {"streams": [{"codec_name": codec.group(1), "width": int(dimensions.group(1)), "height": int(dimensions.group(2))}]}
 
-    def _transcode(self, record: DeliveryRecord, source: Path, spec: RenditionSpec, index: int) -> JobResult:
+    def _qc(self, plan: JobPlan) -> list[str]:
+        """Evaluate the configured conformance rules against the decoded output."""
+
+        failures: list[str] = []
+        streams = self._probe(plan.output_path).get("streams", [])
+        stream = streams[0] if streams else {}
+        for rule in plan.qc_rules:
+            if rule == "resolution":
+                if stream.get("width") != plan.spec.width or stream.get("height") != plan.spec.height:
+                    failures.append("resolution_mismatch")
+            elif rule == "codec":
+                expected_codec = "hevc" if plan.spec.video_codec == "libx265" else "h264"
+                if stream.get("codec_name") != expected_codec:
+                    failures.append("codec_mismatch")
+            elif rule == "textless_elements":
+                # The distributor requires a textless companion element beside
+                # the rendition. Absence is observed on disk, not assumed.
+                textless = plan.output_path.with_name(f"{plan.spec.name}.textless.mp4")
+                if not textless.exists():
+                    failures.append("missing_textless_element")
+        return failures
+
+    def _attempt(self, plan: JobPlan) -> tuple[int, str, bool]:
+        """Run one FFmpeg attempt. Returns (exit_code, stderr, timed_out)."""
+
+        try:
+            process = self._run([
+                self.ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-i", str(plan.input_path),
+                "-vf", f"scale={plan.spec.width}:{plan.spec.height}", "-c:v", plan.codec,
+                "-preset", "ultrafast", "-b:v", f"{plan.spec.video_bitrate_kbps}k", "-an",
+                str(plan.output_path),
+            ], timeout=plan.timeout_seconds)
+            return process.returncode, process.stderr, False
+        except subprocess.TimeoutExpired:
+            return -1, "ffmpeg exceeded the real subprocess timeout", True
+
+    def _transcode(self, record: DeliveryRecord, plan: JobPlan) -> JobResult:
         started = time.perf_counter()
-        output = source.parent / f"{spec.name}.mp4"
-        input_path = source
-        codec = spec.video_codec
-        timeout = 60.0
-        if record.fault_mode == "poison_input" and index == 0:
-            input_path = source.parent / "poison.bin"
-            input_path.write_bytes(b"not a media file\x00\x01")
-        elif record.fault_mode == "wrong_codec" and index == 0:
-            codec = "encoder_that_does_not_exist"
-        elif record.fault_mode == "timeout" and index == 0:
-            timeout = 0.001
+        for name, payload in plan.extra_inputs.items():
+            (plan.output_path.parent / name).write_bytes(payload)
 
         retries = 0
-        failure_class = None
+        failure_class: str | None = None
         exit_code = -1
         stderr = ""
-        with stage_span("transcode.rendition", delivery_id=record.delivery_id, spec=spec.name, transform=f"{spec.width}x{spec.height}") as span:
-            try:
-                process = self._run([
-                    self.ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-i", str(input_path),
-                    "-vf", f"scale={spec.width}:{spec.height}", "-c:v", codec,
-                    "-preset", "ultrafast", "-b:v", f"{spec.video_bitrate_kbps}k", "-an", str(output),
-                ], timeout=timeout)
-                exit_code = process.returncode
-                stderr = process.stderr
-            except subprocess.TimeoutExpired:
-                failure_class = "timeout"
-                stderr = "ffmpeg exceeded the real subprocess timeout"
-            if exit_code != 0 and not failure_class:
-                failure_class = "poison_input" if record.fault_mode == "poison_input" and index == 0 else "codec_fault" if record.fault_mode == "wrong_codec" and index == 0 else "transcode_failure"
-            span.set_attribute("exit_code", exit_code)
-            span.set_attribute("failure_class", failure_class or "none")
-
         qc_failures: list[str] = []
-        if not failure_class:
-            with stage_span("qc.rendition", delivery_id=record.delivery_id, spec=spec.name):
-                streams = self._probe(output).get("streams", [])
-                stream = streams[0] if streams else {}
-                if stream.get("width") != spec.width or stream.get("height") != spec.height:
-                    qc_failures.append("resolution_mismatch")
-                expected_codec = "hevc" if spec.video_codec == "libx265" else "h264"
-                if stream.get("codec_name") != expected_codec:
-                    qc_failures.append("codec_mismatch")
-                if record.fault_mode == "qc_rule_change" and index == 0:
-                    qc_failures.append("new_textless_element_rule")
-                if qc_failures:
-                    failure_class = "qc_rule_change" if record.fault_mode == "qc_rule_change" and index == 0 else "qc_failure"
+
+        with stage_span(
+            "transcode.rendition",
+            delivery_id=record.delivery_id,
+            spec=plan.spec.name,
+            transform=f"{plan.spec.width}x{plan.spec.height}",
+            encoder=plan.codec,
+        ) as span:
+            while True:
+                exit_code, stderr, timed_out = self._attempt(plan)
+                output_bytes = plan.output_path.stat().st_size if plan.output_path.exists() else 0
+                failure_class = classify(
+                    exit_code=exit_code,
+                    stderr=stderr,
+                    output_bytes=output_bytes,
+                    timed_out=timed_out,
+                )
+                if failure_class is None or not is_retryable(failure_class) or retries >= 1:
+                    break
+                retries += 1
+                event(
+                    "rendition_retry",
+                    delivery_id=record.delivery_id,
+                    spec=plan.spec.name,
+                    attempt=retries,
+                    observed_class=failure_class,
+                )
+
+            if failure_class is None:
+                with stage_span("qc.rendition", delivery_id=record.delivery_id, spec=plan.spec.name):
+                    qc_failures = self._qc(plan)
+                    failure_class = classify(
+                        exit_code=exit_code,
+                        stderr=stderr,
+                        output_bytes=plan.output_path.stat().st_size if plan.output_path.exists() else 0,
+                        timed_out=False,
+                        qc_failures=qc_failures,
+                    )
+
+            span.set_attribute("exit_code", exit_code)
+            span.set_attribute("retries", retries)
+            span.set_attribute("observed_failure_class", failure_class or "none")
 
         duration = time.perf_counter() - started
-        status = "failed" if failure_class or qc_failures else "passed"
-        JOB_DURATION.labels(spec=spec.name, status=status).observe(duration)
+        output_bytes = plan.output_path.stat().st_size if plan.output_path.exists() else 0
+        status = "failed" if failure_class else "passed"
+        JOB_DURATION.labels(spec=plan.spec.name, status=status).observe(duration)
         if failure_class:
             JOB_FAILURES.labels(failure_class=failure_class).inc()
         if retries:
-            JOB_RETRIES.labels(spec=spec.name).inc(retries)
-        event("rendition_complete", delivery_id=record.delivery_id, spec=spec.name, status=status, duration_seconds=duration, exit_code=exit_code, failure_class=failure_class, ffmpeg_stderr=stderr[-500:])
-        return JobResult(spec_name=spec.name, status=status, duration_seconds=round(duration, 6), exit_code=exit_code, retries=retries, output_bytes=output.stat().st_size if output.exists() else 0, failure_class=failure_class, qc_failures=qc_failures)
+            JOB_RETRIES.labels(spec=plan.spec.name).inc(retries)
+        event(
+            "rendition_complete",
+            delivery_id=record.delivery_id,
+            spec=plan.spec.name,
+            status=status,
+            duration_seconds=duration,
+            exit_code=exit_code,
+            retries=retries,
+            observed_failure_class=failure_class,
+            qc_rules_applied=list(plan.qc_rules),
+            qc_failures=qc_failures,
+            ffmpeg_stderr=stderr[-500:],
+        )
+        return JobResult(
+            spec_name=plan.spec.name,
+            status=status,
+            duration_seconds=round(duration, 6),
+            exit_code=exit_code,
+            retries=retries,
+            output_bytes=output_bytes,
+            failure_class=failure_class,
+            qc_failures=qc_failures,
+        )
 
     def run(self, record: DeliveryRecord) -> DeliveryRecord:
         directory = self.root / record.delivery_id
@@ -125,19 +256,18 @@ class PipelineRunner:
         record.status = "running"
         record.pending_specs = len(record.specs)
         QUEUE_DEPTH.labels(delivery_id=record.delivery_id).set(record.pending_specs)
-        with stage_span(
-            "delivery.pipeline",
-            delivery_id=record.delivery_id,
-            title=record.title,
-            fault_mode=record.fault_mode,
-        ) as pipeline_span:
+        # The pipeline span deliberately carries no scenario label and no title.
+        # Both were previously readable by the agent, which turned diagnosis into
+        # a lookup of the answer.
+        with stage_span("delivery.pipeline", delivery_id=record.delivery_id) as pipeline_span:
             context = pipeline_span.get_span_context()
             if context.is_valid:
                 record.last_trace_id = format(context.trace_id, "032x")
             source = self._source(directory, record.delivery_id)
+            plans = self.plan(record, source)
             jobs: list[JobResult] = []
-            with ThreadPoolExecutor(max_workers=min(4, len(record.specs))) as executor:
-                futures = {executor.submit(self._transcode, record, source, spec, index): spec for index, spec in enumerate(record.specs)}
+            with ThreadPoolExecutor(max_workers=min(4, len(plans))) as executor:
+                futures = [executor.submit(self._transcode, record, plan) for plan in plans]
                 for future in as_completed(futures):
                     jobs.append(future.result())
                     record.pending_specs -= 1

@@ -18,12 +18,16 @@ class RenditionSpec(BaseModel):
     video_bitrate_kbps: int = Field(ge=100, le=50_000)
 
 
+QC_RULES = ("resolution", "codec", "textless_elements")
+
+
 class CreateDelivery(BaseModel):
     title: str = Field(min_length=2, max_length=160)
     contractual_date: datetime
     penalty_tier: Literal["standard", "priority", "premiere"] = "standard"
     specs: list[RenditionSpec] = Field(min_length=1, max_length=8)
     fault_mode: FaultMode = "none"
+    qc_rules: list[Literal[QC_RULES]] = ["resolution", "codec"]
 
     @model_validator(mode="after")
     def deadline_is_aware(self) -> "CreateDelivery":
@@ -64,9 +68,14 @@ class DeliveryRecord(BaseModel):
     active_workers: int = 1
     retry_penalty_seconds: float = 0
     burn_observations: list[BurnObservation] = []
+    qc_rules: list[str] = ["resolution", "codec"]
     package_complete: bool = False
     simulated_delivery_accepted: bool | None = None
     last_trace_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{32}$")
+    alert_rule: dict[str, object] | None = None
+    recovering: bool = False
+    last_investigation: dict[str, object] | None = None
+    decisions: list[dict[str, object]] = []
 
 
 class ThresholdResult(BaseModel):
@@ -91,8 +100,34 @@ class JeopardyResult(BaseModel):
     requires_human: bool = True
 
 
+REMEDIATION_ACTIONS = ("requeue_safe", "increase_workers", "prioritize_contract", "escalate_deadline")
+
+
+class RemediationOption(BaseModel):
+    """One bounded option the Remediate agent may put in front of an operator.
+
+    `action` is constrained to the four actions the API can actually perform, so
+    the agent cannot propose something the product has no way to carry out, and
+    the board can render each option as a real approval button.
+    """
+
+    action: Literal[REMEDIATION_ACTIONS]
+    summary: str = Field(min_length=4, max_length=240)
+    schedule_cost_seconds: float = Field(ge=0, le=2_592_000)
+    reversible: bool
+    evidence: str = Field(min_length=4, max_length=600)
+
+
+class RemediationPlan(BaseModel):
+    """Structured output contract for the Remediate agent."""
+
+    options: list[RemediationOption] = Field(min_length=1, max_length=4)
+    recommended_action: Literal[REMEDIATION_ACTIONS]
+    why_a_human_decides: str = Field(min_length=4, max_length=400)
+
+
 class RemediationApproval(BaseModel):
-    action: Literal["requeue_safe", "increase_workers", "prioritize_contract", "escalate_deadline"]
+    action: Literal[REMEDIATION_ACTIONS]
     operator_id: str = Field(min_length=2, max_length=120)
     approved: bool
 

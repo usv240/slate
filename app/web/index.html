@@ -5,107 +5,452 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>SLATE — Delivery dates as SLOs</title>
   <style>
-    :root{--paper:#f4f1e9;--ink:#17201d;--muted:#59625d;--line:#c9cdc4;--green:#146c50;--amber:#a14f09;--red:#ae2f2a;--navy:#183d4c;--white:#fffdf7;--shadow:0 18px 60px rgba(23,32,29,.10)}
-    *{box-sizing:border-box} body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,sans-serif}
-    button,input,select{font:inherit} button{cursor:pointer}.shell{max-width:1180px;margin:auto;padding:24px}
-    nav{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding:10px 0 22px}.mark{font-weight:900;letter-spacing:.22em}.mode{display:flex;border:1px solid var(--line);border-radius:99px;padding:3px;background:var(--white)}.mode button{border:0;border-radius:99px;background:transparent;padding:7px 13px;color:var(--muted)}.mode button.active{background:var(--ink);color:white}
-    header{padding:72px 0 50px;display:grid;grid-template-columns:1.35fr .65fr;gap:44px;align-items:end}.eyebrow{text-transform:uppercase;letter-spacing:.15em;color:var(--green);font-size:.76rem;font-weight:800}h1{font-family:Georgia,serif;font-size:clamp(3rem,7vw,6.7rem);line-height:.89;letter-spacing:-.055em;margin:14px 0 26px;max-width:900px}.lead{font-size:1.2rem;max-width:680px;color:var(--muted)}
-    .truth{background:var(--navy);color:white;padding:24px;border-radius:4px;box-shadow:var(--shadow)}.truth strong{display:block;font-size:1.05rem;margin-bottom:8px}.truth p{color:#d4e1e4;margin:7px 0}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#5ae0a9;margin-right:8px}.dot.sim{background:#f3ba62}
-    .bar{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);background:var(--white);margin-bottom:28px}.stat{padding:20px;border-right:1px solid var(--line)}.stat:last-child{border:0}.stat b{font-size:1.8rem;display:block}.stat span{color:var(--muted);font-size:.84rem}
-    .section-head{display:flex;align-items:end;justify-content:space-between;gap:16px;margin:50px 0 16px}h2{font-family:Georgia,serif;font-size:2rem;margin:0}.quiet{color:var(--muted);font-size:.9rem}.board{display:grid;gap:12px}.empty,.card{background:var(--white);border:1px solid var(--line);padding:22px}.card{display:grid;grid-template-columns:1.5fr repeat(4,1fr) auto;align-items:center;gap:18px}.card h3{margin:0 0 3px}.label{color:var(--muted);font-size:.72rem;text-transform:uppercase;letter-spacing:.08em}.value{font-weight:750}.pill{display:inline-block;border-radius:99px;padding:5px 10px;background:#e4efe9;color:var(--green);font-size:.78rem;font-weight:800}.pill.degraded,.pill.at_risk{background:#f8ded9;color:var(--red)}
-    .primary,.secondary{border:0;background:var(--ink);color:white;padding:10px 15px;border-radius:2px}.primary:disabled,.secondary:disabled{opacity:.5}.secondary{background:transparent;color:var(--ink);border:1px solid var(--line)}.form{display:grid;grid-template-columns:2fr 1.3fr 1fr auto auto;gap:10px;background:var(--white);border:1px solid var(--line);padding:18px}.form input,.form select{border:1px solid var(--line);background:white;padding:11px;color:var(--ink)}
-    .actions{display:flex;gap:7px;flex-wrap:wrap}.links{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px}.links a{color:#d4e1e4}.proof{margin-top:12px;background:#0d1513;color:#b9edda;padding:18px;max-height:340px;overflow:auto;white-space:pre-wrap;font:12px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace}.proof[hidden]{display:none}
-    .gate{margin-top:56px;background:var(--ink);color:white;padding:32px;display:grid;grid-template-columns:.75fr 1.25fr;gap:36px}.gate h2{font-size:2.3rem}.equation{font:14px/1.9 ui-monospace,SFMono-Regular,Consolas,monospace;background:#0d1513;padding:20px;color:#b9edda}.pass{color:#72ddb4}.foot{padding:36px 0;color:var(--muted);font-size:.84rem;display:flex;justify-content:space-between;gap:20px}.technical{display:none}body.tech .plain{display:none}body.tech .technical{display:block}
-    @media(max-width:850px){header,.gate{grid-template-columns:1fr}.bar{grid-template-columns:1fr}.stat{border-right:0;border-bottom:1px solid var(--line)}.card{grid-template-columns:1fr 1fr}.form{grid-template-columns:1fr}.foot{display:block}h1{font-size:4rem}}
-    /* --- investigation view --- */
-    .inv{margin-top:14px;background:var(--white);border:1px solid var(--line);border-radius:4px;box-shadow:var(--shadow);overflow:hidden}
-    .inv[hidden]{display:none}
+    /* Light is the default on first load even when the OS prefers dark: this is
+       an operations surface read in bright rooms, and an unrequested jump to a
+       dark ground on a page about contractual risk reads as a fault. Dark is
+       opt-in and remembered. */
+    :root{
+      --paper:#f4f1e9;--panel:#fffdf7;--ink:#17201d;--muted:#59625d;--line:#c9cdc4;
+      --navy:#183d4c;--navy-ink:#f2f7f8;
+      --ok:#146c50;--ok-bg:#e4efe9;--warn:#a14f09;--warn-bg:#fbeed8;--bad:#ae2f2a;--bad-bg:#f8ded9;
+      --code-bg:#0d1513;--code-ink:#b9edda;
+      --shadow:0 18px 60px rgba(23,32,29,.10);
+    }
+    :root[data-theme="dark"]{
+      --paper:#12171a;--panel:#191f22;--ink:#e6eae7;--muted:#9aa6a1;--line:#2c3438;
+      --navy:#0e2731;--navy-ink:#dcecf0;
+      --ok:#5fc08c;--ok-bg:#14301f;--warn:#e0a253;--warn-bg:#382713;--bad:#f08d82;--bad-bg:#3d1c19;
+      --code-bg:#0a0f10;--code-ink:#a9dfc9;
+      --shadow:0 18px 60px rgba(0,0,0,.45);
+    }
+    *{box-sizing:border-box}
+    /* Nothing on this page may scroll the body sideways. Grid and flex children
+       default to min-width:auto, so a wide input or a long unbreakable token
+       silently widens its track; every track that can hold one is pinned to 0. */
+    html{max-width:100%}
+    body{margin:0;max-width:100%;overflow-x:hidden;background:var(--paper);color:var(--ink);font:16px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+    h1,h2,h3,p,li,td,th{overflow-wrap:break-word}
+    button,input,select{font:inherit;color:inherit}
+    button{cursor:pointer}
+    a{color:var(--navy)}
+    :root[data-theme="dark"] a{color:var(--code-ink)}
+    :focus-visible{outline:2px solid var(--ok);outline-offset:2px}
+    .shell{max-width:1180px;width:100%;margin:auto;padding:24px}
+
+    nav{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding:10px 0 22px}
+    .mark{font-weight:900;letter-spacing:.22em;font-size:.9rem}
+    .navtools{display:flex;gap:8px;align-items:center}
+    .mode{display:flex;border:1px solid var(--line);border-radius:99px;padding:3px;background:var(--panel)}
+    .mode button{border:0;border-radius:99px;background:transparent;padding:7px 13px;color:var(--muted)}
+    .mode button.active{background:var(--ink);color:var(--paper)}
+    .themebtn{border:1px solid var(--line);background:var(--panel);border-radius:99px;padding:7px 13px;color:var(--muted)}
+
+    header{padding:60px 0 44px;display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,.65fr);gap:44px;align-items:end}
+    header>*{min-width:0}
+    .eyebrow{text-transform:uppercase;letter-spacing:.15em;color:var(--ok);font-size:.76rem;font-weight:800}
+    h1{font-family:Georgia,"Times New Roman",serif;font-size:clamp(2.6rem,6vw,5.6rem);line-height:.92;letter-spacing:-.045em;margin:14px 0 22px;text-wrap:balance}
+    .lead{font-size:1.15rem;max-width:62ch;color:var(--muted)}
+    .truth{background:var(--navy);color:var(--navy-ink);padding:22px;border-radius:4px;box-shadow:var(--shadow)}
+    .truth strong{display:block;font-size:1rem;margin-bottom:10px}
+    .truth p{margin:7px 0;font-size:.93rem}
+    .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#5ae0a9;margin-right:8px;vertical-align:middle}
+    .dot.sim{background:#f3ba62}
+    .links{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;font-size:.9rem}
+    .truth .links a{color:var(--navy-ink)}
+
+    .bar{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);background:var(--panel);margin-bottom:26px}
+    .stat{padding:18px 20px;border-right:1px solid var(--line)}
+    .stat:last-child{border-right:0}
+    .stat b{font-size:1.7rem;display:block;font-variant-numeric:tabular-nums;line-height:1.15}
+    .stat span{color:var(--muted);font-size:.82rem}
+
+    .section-head{display:flex;align-items:end;justify-content:space-between;gap:16px;margin:44px 0 14px;flex-wrap:wrap}
+    h2{font-family:Georgia,"Times New Roman",serif;font-size:1.9rem;margin:0}
+    .quiet{color:var(--muted);font-size:.88rem}
+
+    .form{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1.1fr) minmax(0,.9fr) auto auto;gap:10px;background:var(--panel);border:1px solid var(--line);padding:16px;margin-bottom:14px}
+    .form input,.form select{border:1px solid var(--line);background:var(--paper);padding:11px;min-width:0;width:100%}
+    .primary,.secondary,.danger{border:1px solid transparent;background:var(--ink);color:var(--paper);padding:10px 15px;border-radius:2px}
+    .secondary{background:transparent;color:var(--ink);border-color:var(--line)}
+    .danger{background:transparent;color:var(--bad);border-color:var(--line)}
+    .primary:disabled,.secondary:disabled,.danger:disabled{opacity:.5;cursor:progress}
+
+    .board{display:grid;gap:12px}
+    .empty{background:var(--panel);border:1px dashed var(--line);padding:26px;color:var(--muted)}
+    .card{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--line);padding:18px 20px;display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) 132px minmax(0,auto);gap:16px;align-items:center}
+    .card.at_risk{border-left-color:var(--bad)}
+    .card.degraded{border-left-color:var(--warn)}
+    .card.healthy,.card.recovered{border-left-color:var(--ok)}
+    .card>*{min-width:0}
+    .card h3{margin:0 0 6px;font-size:1.02rem;overflow-wrap:anywhere}
+    .label{color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.08em}
+    .value{font-weight:700;font-variant-numeric:tabular-nums}
+    .value.neg{color:var(--bad)}
+    .pill{display:inline-block;border-radius:99px;padding:4px 10px;font-size:.74rem;font-weight:800;background:var(--ok-bg);color:var(--ok)}
+    .pill.at_risk{background:var(--bad-bg);color:var(--bad)}
+    .pill.degraded{background:var(--warn-bg);color:var(--warn)}
+    .pill.queued,.pill.running{background:var(--line);color:var(--muted)}
+    .pill.recovered{background:var(--ok-bg);color:var(--ok)}
+    .spark{display:block;width:100%;height:44px}
+    .sparkempty{color:var(--muted);font-size:.72rem}
+    .actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+    .cardfoot{grid-column:1/-1;display:flex;gap:14px;flex-wrap:wrap;border-top:1px solid var(--line);margin-top:4px;padding-top:10px;font-size:.78rem;color:var(--muted)}
+    .cardfoot a{color:var(--muted)}
+
+    .proof{margin-top:12px;background:var(--code-bg);color:var(--code-ink);padding:18px;max-height:340px;overflow:auto;white-space:pre-wrap;font:12px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace}
+    .proof[hidden],.inv[hidden]{display:none}
+
+    .gate{margin-top:52px;background:var(--ink);color:var(--paper);padding:30px;display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:32px}
+    .gate>*{min-width:0}
+    :root[data-theme="dark"] .gate{background:#0c1113}
+    .gate h2{font-size:2.1rem}
+    .gate .eyebrow{color:#72ddb4}
+    .equation{font:14px/1.9 ui-monospace,SFMono-Regular,Consolas,monospace;background:var(--code-bg);padding:20px;color:var(--code-ink);overflow-x:auto}
+    .pass{color:#72ddb4}
+    .foot{padding:34px 0;color:var(--muted);font-size:.83rem;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+    .technical{display:none}
+    body.tech .plain{display:none}
+    body.tech .technical{display:block}
+
+    /* investigation view */
+    .inv{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:4px;box-shadow:var(--shadow);overflow:hidden}
+    .inv>*{min-width:0}
     .invhead{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;padding:16px 20px;border-bottom:1px solid var(--line)}
-    .invhead h3{margin:0;font-family:Georgia,serif;font-size:1.25rem}
+    .invhead h3{margin:0;font-family:Georgia,serif;font-size:1.22rem}
     .pillrow{display:flex;gap:.4rem;flex-wrap:wrap}
-    .mini{font-size:.68rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--line);border-radius:999px;padding:.25rem .6rem;color:var(--muted);background:var(--paper)}
-    .mini.ok{border-color:var(--green);color:var(--green)}
-    .mini.warn{border-color:var(--amber);color:var(--amber)}
-
+    .mini{font-size:.66rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--line);border-radius:999px;padding:.25rem .6rem;color:var(--muted);background:var(--paper)}
+    .mini.ok{border-color:var(--ok);color:var(--ok)}
+    .mini.warn{border-color:var(--warn);color:var(--warn)}
     .gaterow{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border-bottom:1px solid var(--line)}
-    .gcell{background:var(--white);padding:14px 20px}
-    .gcell .gname{font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.3rem}
+    .gcell{background:var(--panel);padding:14px 20px}
+    .gcell .gname{font-size:.7rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.3rem}
     .gcell .gval{font-weight:800;display:flex;align-items:center;gap:.4rem}
-    .tick{display:inline-grid;place-items:center;width:17px;height:17px;border-radius:50%;font-size:.65rem;color:#fff;background:var(--green)}
+    .tick{display:inline-grid;place-items:center;width:17px;height:17px;border-radius:50%;font-size:.65rem;color:#fff;background:var(--ok)}
     .tick.no{background:var(--muted)}
-    .gcell small{display:block;color:var(--muted);font-size:.72rem;margin-top:.25rem;word-break:break-word}
-
+    .gcell small{display:block;color:var(--muted);font-size:.71rem;margin-top:.25rem;overflow-wrap:anywhere}
     .evid{padding:18px 20px;border-bottom:1px solid var(--line)}
-    .evid h4,.chain h4{margin:0 0 .7rem;font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
-    .q{display:grid;grid-template-columns:auto 1fr auto;gap:.8rem;align-items:center;padding:.55rem 0;border-bottom:1px solid var(--line)}
+    .evid h4,.chain h4{margin:0 0 .7rem;font-size:.69rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+    .q{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:.8rem;align-items:center;padding:.55rem 0;border-bottom:1px solid var(--line)}
     .q:last-child{border-bottom:0}
-    .qsrc{font-size:.62rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:.22rem .5rem;border-radius:4px;background:var(--navy);color:#fff;white-space:nowrap}
-    .qsrc.loki{background:#7a5c17}.qsrc.tempo{background:#5a2f6b}
-    .q code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.76rem;color:var(--ink);word-break:break-all}
+    .qsrc{font-size:.61rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:.22rem .5rem;border-radius:4px;background:var(--navy);color:var(--navy-ink);white-space:nowrap}
+    .qsrc.logql{background:#7a5c17;color:#fff}.qsrc.tempo{background:#5a2f6b;color:#fff}
+    .q code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.75rem;overflow-wrap:anywhere}
     .qv{font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
-    .qv.neg{color:var(--red)}
+    .qv.neg{color:var(--bad)}
     .qv.none{color:var(--muted);font-weight:600;font-size:.8rem}
-
     .chain{padding:18px 20px;display:grid;gap:12px}
     .agent{border:1px solid var(--line);border-radius:4px;overflow:hidden}
-    .agenthead{display:flex;align-items:center;gap:.6rem;padding:.6rem .9rem;background:var(--paper);border-bottom:1px solid var(--line)}
-    .anum{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:.7rem;font-weight:800}
-    .agenthead b{font-size:.86rem}
-    .agenthead span{margin-left:auto;font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
-    .agentbody{padding:.9rem;font-size:.87rem;line-height:1.6;white-space:pre-wrap;max-height:260px;overflow:auto}
-    .agentbody strong{font-weight:800}
-
-    .invfoot{padding:14px 20px;display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;align-items:center;background:var(--paper);border-top:1px solid var(--line)}
-    .invfoot .small{color:var(--muted);font-size:.8rem;max-width:60ch}
-    .raw{margin:0 20px 18px}
-    .raw summary{cursor:pointer;font-size:.78rem;color:var(--muted)}
-    .raw pre{margin:.6rem 0 0;background:#0d1513;color:#b9edda;padding:14px;max-height:300px;overflow:auto;white-space:pre-wrap;font:11.5px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace}
-    @media(max-width:850px){.gaterow{grid-template-columns:1fr}.q{grid-template-columns:1fr;gap:.3rem}}
-    .agentbody{padding:.9rem;font-size:.87rem;line-height:1.6;max-height:280px;overflow:auto;white-space:normal}
-    .ab-h{font-weight:800;font-size:.74rem;text-transform:uppercase;letter-spacing:.07em;color:var(--navy);margin:.9rem 0 .35rem}
+    .agenthead{display:flex;align-items:center;gap:.6rem;padding:.6rem .9rem;background:var(--paper);border-bottom:1px solid var(--line);flex-wrap:wrap}
+    .anum{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--navy);color:var(--navy-ink);font-size:.7rem;font-weight:800}
+    .agenthead b{font-size:.85rem}
+    .agenthead span.role{margin-left:auto;font-size:.66rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
+    .agentbody{padding:.9rem;font-size:.86rem;line-height:1.6;max-height:280px;overflow:auto}
+    .ab-h{font-weight:800;font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--navy);margin:.9rem 0 .35rem}
+    :root[data-theme="dark"] .ab-h{color:var(--code-ink)}
     .ab-h:first-child{margin-top:0}
     .ab-p{margin:0 0 .55rem}
     .ab-list{margin:.15rem 0 .6rem;padding-left:1.1rem}
     .ab-list li{margin-bottom:.3rem}
-    .ab-code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.79rem;background:var(--paper);border:1px solid var(--line);border-radius:3px;padding:.05em .3em;word-break:break-word}
-    .cost-strip{border-top:1px solid var(--line)}
+    .ab-code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.78rem;background:var(--paper);border:1px solid var(--line);border-radius:3px;padding:.05em .3em;overflow-wrap:anywhere}
+
+    /* remediation options */
+    .opts{display:grid;gap:10px;padding:18px 20px;border-bottom:1px solid var(--line)}
+    .opt{border:1px solid var(--line);border-radius:4px;padding:14px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center}
+    .opt.rec{border-color:var(--ok);background:var(--ok-bg)}
+    .opt .oname{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-weight:700;font-size:.84rem}
+    .opt .osum{font-size:.87rem;margin:.3rem 0}
+    .opt .ometa{font-size:.73rem;color:var(--muted)}
+    .opt .ometa b{font-variant-numeric:tabular-nums}
+    .recflag{font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--ok);margin-left:.5rem}
+
     .costgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:4px;overflow:hidden}
-    .costcell{background:var(--white);padding:.75rem .9rem}
+    .costcell{background:var(--panel);padding:.75rem .9rem}
     .costcell.total{background:var(--paper)}
-    .costname{font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700}
-    .costbig{font:1.4rem/1.2 Georgia,serif;margin:.15rem 0}
-    .costcell small{color:var(--muted);font-size:.72rem}
-    .costlink{display:inline-block;margin-top:.7rem;font-size:.78rem;color:var(--navy)}
+    .costname{font-size:.66rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700}
+    .costbig{font:1.35rem/1.2 Georgia,serif;margin:.15rem 0;font-variant-numeric:tabular-nums}
+    .costcell small{color:var(--muted);font-size:.71rem}
+    .costlink{display:inline-block;margin-top:.7rem;font-size:.77rem}
+    .invfoot{padding:14px 20px;background:var(--paper);border-top:1px solid var(--line);color:var(--muted);font-size:.8rem}
+    .raw{margin:0 20px 18px}
+    .raw summary{cursor:pointer;font-size:.77rem;color:var(--muted)}
+    .raw pre{margin:.6rem 0 0;background:var(--code-bg);color:var(--code-ink);padding:14px;max-height:300px;overflow:auto;white-space:pre-wrap;font:11.5px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace}
+
+    @media(max-width:980px){
+      header,.gate{grid-template-columns:1fr}
+      .bar{grid-template-columns:repeat(2,1fr)}
+      .stat:nth-child(2){border-right:0}
+      .stat{border-bottom:1px solid var(--line)}
+      .card{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+      .card .sparkwrap{grid-column:1/-1}
+      .actions{grid-column:1/-1;justify-content:flex-start}
+      .form{grid-template-columns:1fr}
+      .gaterow{grid-template-columns:1fr}
+      .opt{grid-template-columns:1fr}
+    }
+    @media(max-width:560px){
+      .bar{grid-template-columns:1fr}
+      .stat{border-right:0}
+      .card{grid-template-columns:1fr}
+      h1{font-size:2.5rem}
+      .q{grid-template-columns:1fr;gap:.3rem}
+      .actions button{flex:1 1 auto}
+    }
+    @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
   </style>
 </head>
 <body>
 <main class="shell">
-  <nav><div class="mark">SLATE / DELIVERY CONTROL</div><div class="mode" aria-label="Reading mode"><button id="plain" class="active">Plain</button><button id="tech">Technical</button></div></nav>
+  <nav>
+    <div class="mark">SLATE / DELIVERY CONTROL</div>
+    <div class="navtools">
+      <div class="mode" role="group" aria-label="Reading mode">
+        <button id="plain" class="active" type="button" aria-pressed="true">Plain</button>
+        <button id="tech" type="button" aria-pressed="false">Technical</button>
+      </div>
+      <button class="themebtn" id="theme" type="button" aria-pressed="false">Dark</button>
+    </div>
+  </nav>
+
   <header>
-    <div><div class="eyebrow">Post-production delivery intelligence</div><h1>A deadline you cannot move deserves an SLO.</h1><p class="lead plain">SLATE watches every version of a title as it is made and warns the delivery supervisor when the remaining work will cross the contractual date—not merely when a machine fails.</p><p class="lead technical">SLATE traces ingest → rendition fan-out → QC → packaging, derives schedule budget from measured p95 work, and opens jeopardy only after the deterministic three-part gate passes.</p></div>
-    <aside class="truth"><strong>Evidence boundary</strong><p><i class="dot"></i>FFmpeg execution and telemetry are real</p><p><i class="dot"></i>Gate verdicts are deterministic</p><p><i class="dot"></i>Grafana MCP reads and annotates the live stack</p><p><i class="dot sim"></i>External delivery receiver is simulated</p><div class="links"><a href="/health" target="_blank">Live health</a><a href="/v1/integrations/grafana/evidence" target="_blank">MCP evidence</a><a href="https://35-255-68-247.sslip.io/d/slate-delivery/slate-delivery-control-tower?kiosk" target="_blank" rel="noreferrer">Grafana control tower</a></div></aside>
+    <div>
+      <div class="eyebrow">Post-production delivery intelligence</div>
+      <h1>A deadline you cannot move deserves an SLO.</h1>
+      <p class="lead plain">SLATE watches every version of a title as it is made and warns the delivery supervisor when the remaining work will cross the contractual date—not merely when a machine fails.</p>
+      <p class="lead technical">SLATE traces ingest → rendition fan-out → QC → packaging, derives schedule budget from measured p95 work, and opens jeopardy only after the deterministic three-part gate passes. Failure classes come from FFmpeg's own stderr, never from the scenario that was injected.</p>
+    </div>
+    <aside class="truth">
+      <strong>Evidence boundary</strong>
+      <p><i class="dot"></i>FFmpeg execution and telemetry are real</p>
+      <p><i class="dot"></i>Gate verdicts and failure classes are deterministic</p>
+      <p><i class="dot"></i>Grafana MCP reads, alerts and annotates the live stack</p>
+      <p><i class="dot sim"></i>External delivery receiver is simulated</p>
+      <div class="links">
+        <a href="/health" target="_blank" rel="noreferrer">Live health</a>
+        <a href="/v1/integrations/grafana/evidence" target="_blank" rel="noreferrer">MCP evidence</a>
+        <a id="grafanaLink" target="_blank" rel="noreferrer">Grafana control tower</a>
+        <a href="/v1/integrations/grafana/panel-reading" target="_blank" rel="noreferrer">Panel read by Gemini</a>
+      </div>
+    </aside>
   </header>
-  <section class="bar"><div class="stat"><b id="total">0</b><span>contractual deliveries</span></div><div class="stat"><b id="risk">0</b><span>currently at risk</span></div><div class="stat"><b>Never</b><span>automatic remediation</span></div></section>
+
+  <section class="bar">
+    <div class="stat"><b id="total">0</b><span>contractual deliveries</span></div>
+    <div class="stat"><b id="risk">0</b><span>currently at risk</span></div>
+    <div class="stat"><b id="tightest">—</b><span>tightest schedule budget</span></div>
+    <div class="stat"><b>Never</b><span>automatic remediation</span></div>
+  </section>
+
   <section>
-    <div class="section-head"><div><div class="eyebrow">Live control board</div><h2>Every title. One immovable date.</h2></div><span class="quiet" id="updated">Waiting for API</span></div>
-    <form class="form" id="create"><input id="title" value="Public-domain launch package" required aria-label="Title"><input id="deadline" type="datetime-local" required aria-label="Contract date"><select id="fault" aria-label="Fault injection"><option value="none">Healthy run</option><option value="poison_input">Poison input</option><option value="wrong_codec">Codec fault</option><option value="timeout">Timeout</option><option value="qc_rule_change">QC rule change</option></select><button class="primary">Add delivery</button><button class="secondary" id="proofButton" type="button">Run 20s judge proof</button></form>
+    <div class="section-head">
+      <div><div class="eyebrow">Live control board</div><h2>Every title. One immovable date.</h2></div>
+      <span class="quiet" id="updated">Waiting for API</span>
+    </div>
+    <form class="form" id="create">
+      <input id="title" value="Public-domain launch package" required aria-label="Title">
+      <input id="deadline" type="datetime-local" required aria-label="Contract date">
+      <select id="fault" aria-label="Scenario">
+        <option value="none">Healthy run</option>
+        <option value="poison_input">Unreadable input</option>
+        <option value="wrong_codec">Missing encoder</option>
+        <option value="timeout">Encode deadline</option>
+        <option value="qc_rule_change">Tightened QC rule</option>
+      </select>
+      <button class="primary" type="submit">Add delivery</button>
+      <button class="secondary" id="proofButton" type="button">Run 20s judge proof</button>
+    </form>
     <div class="board" id="board"><div class="empty">No delivery records yet. Add one above; nothing is pre-seeded as live telemetry.</div></div>
     <section class="inv" id="inv" hidden aria-live="polite"></section>
     <pre class="proof" id="proof" hidden aria-live="polite"></pre>
   </section>
-  <section class="gate"><div><div class="eyebrow">Decision boundary</div><h2>The model cannot move the line.</h2><p class="plain">All three facts must be true before SLATE declares jeopardy. Gemini explains evidence and proposes options; a human owns every action.</p><p class="technical">The API returns <code>gate.passed</code> and <code>gate.failed</code>. The ADK agents cannot override the pure-function verdict.</p></div><div class="equation"><span class="pass">AT_RISK</span> requires<br>projected_completion &gt; contractual_date<br>AND positive_burn sustained over 2 windows<br>AND work_remaining &gt; 0<br><br><span class="pass">AUTO_ACTION = NEVER</span></div></section>
-  <footer class="foot"><span>Built with Google ADK, Gemini on Vertex AI, Cloud Run, Firestore, OpenTelemetry, and the official Grafana MCP server.</span><span>SLATE 0.2 · live judging build</span></footer>
+
+  <section>
+    <div class="section-head">
+      <div><div class="eyebrow">Closing the loop</div><h2>The agent reads the supervisor's chart.</h2></div>
+      <button class="secondary" id="panelButton" type="button">Render the panel through MCP</button>
+    </div>
+    <p class="quiet plain">Grafana draws the schedule-budget panel, the official MCP server carries the PNG back, and Gemini reads the picture. The reading is commentary on a chart, never a verdict.</p>
+    <p class="quiet technical">Tool <code>get_panel_image</code> renders dashboard <code>slate-delivery-slo</code> panel 2; the PNG is passed to Gemini on Vertex as an inline image part. <code>decision_source</code> stays <code>deterministic_gate</code>.</p>
+    <div id="panelOut"></div>
+  </section>
+
+  <section class="gate">
+    <div>
+      <div class="eyebrow">Decision boundary</div>
+      <h2>The model cannot move the line.</h2>
+      <p class="plain">All three facts must be true before SLATE declares jeopardy. Gemini corroborates the evidence and proposes options; a human owns every action.</p>
+      <p class="technical">The API returns <code>gate.passed</code> and <code>gate.failed</code>. The ADK agents cannot override the pure-function verdict, and the failure class is assigned by a classifier that cannot read the injected scenario.</p>
+    </div>
+    <div class="equation">
+      <span class="pass">AT_RISK</span> requires<br>
+      projected_completion &gt; contractual_date<br>
+      AND positive_burn sustained over 2 windows<br>
+      AND work_remaining &gt; 0<br><br>
+      <span class="pass">AUTO_ACTION = NEVER</span>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <span>Built with Google ADK, Gemini on Vertex AI, Cloud Run, Firestore, OpenTelemetry, and the official Grafana MCP server.</span>
+    <span>SLATE 0.3 · live judging build</span>
+  </footer>
 </main>
+
 <script>
-const $=s=>document.querySelector(s); const deadline=$('#deadline'); deadline.value=new Date(Date.now()+6*3600000).toISOString().slice(0,16);
-$('#plain').onclick=()=>{document.body.classList.remove('tech');$('#plain').classList.add('active');$('#tech').classList.remove('active')};
-$('#tech').onclick=()=>{document.body.classList.add('tech');$('#tech').classList.add('active');$('#plain').classList.remove('active')};
-async function load(){const r=await fetch('/v1/deliveries');const rows=(await r.json()).data;$('#total').textContent=rows.length;$('#risk').textContent=rows.filter(x=>x.status==='at_risk').length;$('#updated').textContent='Updated '+new Date().toLocaleTimeString();$('#board').innerHTML=rows.length?rows.map(card).join(''):'<div class="empty">No delivery records yet. Add one above; nothing is pre-seeded as live telemetry.</div>'}
-function card(x){const risk=x.status==='at_risk'?`<button class="secondary" onclick="investigate('${x.delivery_id}',this)">Ask ADK agents</button><button class="secondary" onclick="approve('${x.delivery_id}',this)">Approve +1 worker</button>`:'';return `<article class="card"><div><h3>${escapeHtml(x.title)}</h3><span class="pill ${x.status}">${x.status.replace('_',' ')}</span></div><div><div class="label">Contract</div><div class="value">${new Date(x.contractual_date).toLocaleString()}</div></div><div><div class="label">Specs left</div><div class="value">${x.pending_specs} / ${x.specs.length}</div></div><div><div class="label">Measured p95</div><div class="value">${Number(x.p95_seconds_per_spec).toFixed(2)}s</div></div><div><div class="label">Receiver</div><div class="value">${x.simulated_delivery_accepted===null?'not sent':x.simulated_delivery_accepted?'accepted':'rejected'}*</div></div><div class="actions"><button class="primary" onclick="run('${x.delivery_id}',this)">Run real pipeline</button>${risk}</div></article>`}
-function escapeHtml(v){const d=document.createElement('div');d.textContent=v;return d.innerHTML}
-async function run(id,b){b.disabled=true;b.textContent='Running…';const r=await fetch(`/v1/deliveries/${id}/run`,{method:'POST'});if(!r.ok){const e=await r.json();alert(e.detail?.message||'Pipeline failed')}await load()}
+const $=s=>document.querySelector(s);
 const GRAFANA='https://35-255-68-247.sslip.io';
+const DASHBOARD=GRAFANA+'/d/slate-delivery-slo/slate-c2b7-contractual-delivery-slo?kiosk';
+$('#grafanaLink').href=DASHBOARD;
+
+/* ---------- theme + reading mode ---------- */
+try{ if(localStorage.getItem('slate-theme')==='dark') setTheme('dark'); }catch(e){}
+function setTheme(mode){
+  document.documentElement.setAttribute('data-theme',mode==='dark'?'dark':'light');
+  const b=$('#theme'); if(b){ b.textContent=mode==='dark'?'Light':'Dark'; b.setAttribute('aria-pressed',mode==='dark'); }
+  try{ localStorage.setItem('slate-theme',mode); }catch(e){}
+}
+$('#theme').onclick=()=>setTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark');
+$('#plain').onclick=()=>{document.body.classList.remove('tech');$('#plain').classList.add('active');$('#plain').setAttribute('aria-pressed','true');$('#tech').classList.remove('active');$('#tech').setAttribute('aria-pressed','false')};
+$('#tech').onclick=()=>{document.body.classList.add('tech');$('#tech').classList.add('active');$('#tech').setAttribute('aria-pressed','true');$('#plain').classList.remove('active');$('#plain').setAttribute('aria-pressed','false')};
+
+const deadline=$('#deadline');
+deadline.value=new Date(Date.now()+6*3600000).toISOString().slice(0,16);
+
+/* ---------- helpers ---------- */
 function mkel(tag,text,cls){const n=document.createElement(tag);if(text!==undefined&&text!==null)n.textContent=text;if(cls)n.className=cls;return n}
+function escapeHtml(v){const d=document.createElement('div');d.textContent=v;return d.innerHTML}
+const pause=ms=>new Promise(r=>setTimeout(r,ms));
+function fmtDuration(seconds){
+  const s=Math.abs(seconds);
+  if(s>=86400)return (seconds/86400).toFixed(1)+' d';
+  if(s>=3600)return (seconds/3600).toFixed(1)+' h';
+  if(s>=60)return (seconds/60).toFixed(1)+' m';
+  return seconds.toFixed(1)+' s';
+}
+function latestBudget(x){
+  const obs=x.burn_observations||[];
+  return obs.length?obs[obs.length-1].schedule_budget_seconds:null;
+}
+
+/* Schedule-budget burn-down. The horizontal rule is the contractual date:
+   budget above it is slack, below it the delivery is projected to miss. */
+function sparkline(x){
+  const obs=x.burn_observations||[];
+  if(obs.length<2){const e=mkel('div','burn appears after two runs','sparkempty');return e}
+  const vals=obs.map(o=>o.schedule_budget_seconds);
+  const w=180,h=44,pad=3;
+  const hi=Math.max(...vals,0),lo=Math.min(...vals,0);
+  const span=(hi-lo)||1;
+  const x0=i=>pad+i*(w-2*pad)/(vals.length-1);
+  const y0=v=>pad+(hi-v)*(h-2*pad)/span;
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('viewBox',`0 0 ${w} ${h}`);svg.setAttribute('class','spark');
+  svg.setAttribute('role','img');
+  svg.setAttribute('aria-label',`Schedule budget over ${vals.length} observations, latest ${fmtDuration(vals[vals.length-1])}`);
+  const zero=document.createElementNS('http://www.w3.org/2000/svg','line');
+  zero.setAttribute('x1',pad);zero.setAttribute('x2',w-pad);
+  zero.setAttribute('y1',y0(0));zero.setAttribute('y2',y0(0));
+  zero.setAttribute('stroke','currentColor');zero.setAttribute('stroke-opacity','.28');
+  zero.setAttribute('stroke-dasharray','3 3');zero.setAttribute('fill','none');
+  svg.append(zero);
+  const line=document.createElementNS('http://www.w3.org/2000/svg','polyline');
+  line.setAttribute('points',vals.map((v,i)=>`${x0(i)},${y0(v)}`).join(' '));
+  line.setAttribute('fill','none');line.setAttribute('stroke-width','2');
+  line.setAttribute('stroke',vals[vals.length-1]<0?'var(--bad)':'var(--ok)');
+  svg.append(line);
+  const end=document.createElementNS('http://www.w3.org/2000/svg','circle');
+  end.setAttribute('cx',x0(vals.length-1));end.setAttribute('cy',y0(vals[vals.length-1]));
+  end.setAttribute('r','2.8');end.setAttribute('fill',vals[vals.length-1]<0?'var(--bad)':'var(--ok)');
+  svg.append(end);
+  const wrap=mkel('div',undefined,'sparkwrap');
+  wrap.append(mkel('div','Schedule budget · dashed line is the contract','label'));
+  wrap.append(svg);
+  return wrap;
+}
+
+/* ---------- board ---------- */
+async function load(){
+  const rows=(await (await fetch('/v1/deliveries')).json()).data;
+  $('#total').textContent=rows.length;
+  $('#risk').textContent=rows.filter(x=>x.status==='at_risk').length;
+  const budgets=rows.map(latestBudget).filter(v=>v!==null);
+  $('#tightest').textContent=budgets.length?fmtDuration(Math.min(...budgets)):'—';
+  $('#updated').textContent='Updated '+new Date().toLocaleTimeString();
+  const board=$('#board');board.replaceChildren();
+  if(!rows.length){board.append(mkel('div','No delivery records yet. Add one above; nothing is pre-seeded as live telemetry.','empty'));return}
+  rows.forEach(x=>board.append(card(x)));
+}
+
+function card(x){
+  const el=mkel('article',undefined,'card '+x.status);
+  const head=mkel('div');
+  head.append(mkel('h3',x.title));
+  head.append(mkel('span',x.status.replace('_',' '),'pill '+x.status));
+  el.append(head);
+
+  const contract=mkel('div');
+  contract.append(mkel('div','Contract','label'));
+  contract.append(mkel('div',new Date(x.contractual_date).toLocaleString(),'value'));
+  const budget=latestBudget(x);
+  if(budget!==null){
+    const b=mkel('div','budget '+fmtDuration(budget),'label');
+    b.style.color=budget<0?'var(--bad)':'var(--muted)';
+    contract.append(b);
+  }
+  el.append(contract);
+
+  const work=mkel('div');
+  work.append(mkel('div','Specs left','label'));
+  work.append(mkel('div',`${x.pending_specs} / ${x.specs.length}`,'value'));
+  work.append(mkel('div',`measured p95 ${Number(x.p95_seconds_per_spec).toFixed(2)}s`,'label'));
+  el.append(work);
+
+  el.append(sparkline(x));
+
+  const actions=mkel('div',undefined,'actions');
+  const run=mkel('button','Run real pipeline','primary');
+  run.onclick=()=>runPipeline(x.delivery_id,run);
+  actions.append(run);
+  if(x.status==='at_risk'){
+    const ask=mkel('button','Ask ADK agents','secondary');
+    ask.onclick=()=>investigate(x.delivery_id,ask);
+    actions.append(ask);
+  }
+  const del=mkel('button','Remove','danger');
+  del.onclick=()=>removeDelivery(x.delivery_id,del);
+  actions.append(del);
+  el.append(actions);
+
+  const foot=mkel('div',undefined,'cardfoot');
+  const receiver=x.simulated_delivery_accepted===null?'not sent':(x.simulated_delivery_accepted?'accepted':'rejected');
+  foot.append(mkel('span','Simulated receiver: '+receiver));
+  const classes=[...new Set((x.jobs||[]).map(j=>j.failure_class).filter(Boolean))];
+  if(classes.length)foot.append(mkel('span','Observed: '+classes.join(', ')));
+  const retries=(x.jobs||[]).reduce((n,j)=>n+(j.retries||0),0);
+  if(retries)foot.append(mkel('span','Retries: '+retries));
+  foot.append(mkel('span','QC rules: '+(x.qc_rules||[]).join(', ')));
+  if(x.alert_rule)foot.append(mkel('span','Grafana alert rule: '+(x.alert_rule.provisioned?'provisioned via MCP':'not provisioned')));
+  if(x.decisions&&x.decisions.length)foot.append(mkel('span',x.decisions.length+' human decision'+(x.decisions.length>1?'s':'')));
+  const report=mkel('a','Download report ↓');
+  report.href=`/v1/deliveries/${x.delivery_id}/report`;
+  foot.append(report);
+  el.append(foot);
+  return el;
+}
+
+async function runPipeline(id,b){
+  b.disabled=true;const original=b.textContent;b.textContent='Running…';
+  try{
+    const r=await fetch(`/v1/deliveries/${id}/run`,{method:'POST'});
+    if(!r.ok){const e=await r.json();showProof('PIPELINE UNAVAILABLE',e)}
+  }finally{b.disabled=false;b.textContent=original;await load()}
+}
+async function removeDelivery(id,b){
+  b.disabled=true;
+  try{ await fetch(`/v1/deliveries/${id}`,{method:'DELETE'}); $('#inv').hidden=true; }
+  finally{ await load(); }
+}
+
+/* ---------- investigation rendering ---------- */
 function promValue(block){
   try{
     const raw=JSON.parse(block.content[0].text);
@@ -113,39 +458,20 @@ function promValue(block){
     if(!series.length)return null;
     if(series.length===1)return series[0].value[1];
     return series.map(s=>{
-      const label=Object.values(s.metric).filter(v=>v&&v!=='slate_job_failures_total')[0]||'series';
+      const label=Object.values(s.metric).filter(v=>v&&!String(v).startsWith('slate_'))[0]||'series';
       return label+'='+s.value[1];
     }).join(', ');
   }catch(e){return null}
 }
-function rowCount(block){
-  try{const raw=JSON.parse(block.content[0].text);return (raw.data||[]).length}catch(e){return 0}
-}
+function rowCount(block){try{return (JSON.parse(block.content[0].text).data||[]).length}catch(e){return 0}}
 function evidenceRow(host,src,query,value,href){
   const q=mkel('div',undefined,'q');
   q.append(mkel('span',src,'qsrc '+src.toLowerCase()));
   const c=mkel('code',query);
   if(href){const a=mkel('a');a.href=href;a.target='_blank';a.rel='noreferrer';a.append(c);q.append(a)}else{q.append(c)}
-  const v=mkel('span',value===null||value===undefined?'no rows returned':String(value),'qv'+(value===null||value===undefined?' none':(String(value).startsWith('-')?' neg':'')));
-  q.append(v);host.append(q);
-}
-function agentBody(text){
-  const host=mkel('div',undefined,'agentbody');
-  let list=null;
-  text.split(/\r?\n/).forEach(line=>{
-    const t=line.trim();
-    if(!t){list=null;return}
-    const h=t.match(/^#{1,6}\s+(.*)$/);
-    if(h){list=null;host.append(mkel('div',h[1].replace(/[*`]/g,''),'ab-h'));return}
-    const b=t.match(/^[*-]\s+(.*)$/)||t.match(/^\d+\.\s+(.*)$/);
-    if(b){
-      if(!list){list=mkel('ul',undefined,'ab-list');host.append(list)}
-      const li=mkel('li');li.append(inline(b[1]));list.append(li);return;
-    }
-    list=null;
-    const p=mkel('p',undefined,'ab-p');p.append(inline(t));host.append(p);
-  });
-  return host;
+  const empty=value===null||value===undefined;
+  q.append(mkel('span',empty?'no rows returned':String(value),'qv'+(empty?' none':(String(value).startsWith('-')?' neg':''))));
+  host.append(q);
 }
 function inline(text){
   const frag=document.createDocumentFragment();
@@ -157,16 +483,32 @@ function inline(text){
   });
   return frag;
 }
-function renderInvestigation(payload){
+function agentBody(text){
+  const host=mkel('div',undefined,'agentbody');
+  let list=null;
+  String(text).split(/\r?\n/).forEach(line=>{
+    const t=line.trim();
+    if(!t){list=null;return}
+    const h=t.match(/^#{1,6}\s+(.*)$/);
+    if(h){list=null;host.append(mkel('div',h[1].replace(/[*`]/g,''),'ab-h'));return}
+    const b=t.match(/^[*-]\s+(.*)$/)||t.match(/^\d+\.\s+(.*)$/);
+    if(b){ if(!list){list=mkel('ul',undefined,'ab-list');host.append(list)} const li=mkel('li');li.append(inline(b[1]));list.append(li);return }
+    list=null;
+    const p=mkel('p',undefined,'ab-p');p.append(inline(t));host.append(p);
+  });
+  return host;
+}
+
+function renderInvestigation(payload,deliveryId){
   const box=$('#inv');box.hidden=false;box.replaceChildren();
-  const r=payload.data||{};const gate=payload.gate||{};
-  const be=r.bound_evidence||{};
+  const r=payload.data||{};const gate=payload.gate||{};const be=r.bound_evidence||{};
 
   const head=mkel('div',undefined,'invhead');
   head.append(mkel('h3','Why this delivery is in jeopardy'));
   const pills=mkel('div',undefined,'pillrow');
   pills.append(mkel('span','verdict: '+(gate.verdict||'—'),'mini warn'));
   pills.append(mkel('span','decision: '+(r.decision_source||'—'),'mini ok'));
+  pills.append(mkel('span','class: '+(r.classification_source||'—'),'mini ok'));
   pills.append(mkel('span',r.observability_source||'—','mini'));
   pills.append(mkel('span',r.model||'—','mini'));
   pills.append(mkel('span','human required','mini warn'));
@@ -189,8 +531,7 @@ function renderInvestigation(payload){
   ev.append(mkel('h4','Evidence the agents were bound to — read live through the official Grafana MCP server'));
   const qs=be.queries||{};const prom=be.prometheus||{};
   Object.keys(qs).forEach(k=>{
-    const block=prom[k];
-    evidenceRow(ev,'PromQL',qs[k],block?promValue(block):null,
+    evidenceRow(ev,'PromQL',qs[k],prom[k]?promValue(prom[k]):null,
       GRAFANA+'/explore?left='+encodeURIComponent(JSON.stringify({queries:[{expr:qs[k]}]})));
   });
   if(be.loki_query){
@@ -207,22 +548,52 @@ function renderInvestigation(payload){
   chain.append(mkel('h4','Google ADK agents — each reads the bound evidence, none can change the verdict'));
   const outs=r.outputs||{};
   [['Watch','watch','corroborate or contradict the gate'],
-   ['Diagnose','diagnose','classify the fault from logs and traces'],
-   ['Remediate','remediate','propose options for a human']].forEach((spec,i)=>{
+   ['Diagnose','diagnose','corroborate the deterministic failure class']].forEach((spec,i)=>{
     const text=outs[spec[1]];
     if(!text)return;
     const a=mkel('div',undefined,'agent');
     const h=mkel('div',undefined,'agenthead');
-    h.append(mkel('span',String(i+1),'anum'),mkel('b',spec[0]),mkel('span',spec[2]));
-    a.append(h);
-    a.append(agentBody(text));
+    h.append(mkel('span',String(i+1),'anum'),mkel('b',spec[0]));
+    h.append(mkel('span',spec[2],'role'));
+    a.append(h);a.append(agentBody(text));
     chain.append(a);
   });
   box.append(chain);
 
+  /* Remediate's structured plan, rendered as the approval controls themselves.
+     The operator approves the option the agent actually proposed; the API
+     refuses anything else. */
+  const plan=r.remediation_plan;
+  if(plan&&plan.options&&plan.options.length){
+    const opts=mkel('div',undefined,'opts');
+    opts.append(mkel('h4','Remediate proposed these — approving one is a human action, recorded as a Grafana annotation'));
+    plan.options.forEach(o=>{
+      const recommended=o.action===plan.recommended_action;
+      const row=mkel('div',undefined,'opt'+(recommended?' rec':''));
+      const left=mkel('div');
+      const name=mkel('div',undefined,'oname');
+      name.append(document.createTextNode(o.action));
+      if(recommended)name.append(mkel('span','recommended','recflag'));
+      left.append(name);
+      left.append(mkel('div',o.summary,'osum'));
+      const meta=mkel('div',undefined,'ometa');
+      meta.append(document.createTextNode('schedule cost '));
+      meta.append(mkel('b',fmtDuration(o.schedule_cost_seconds)));
+      meta.append(document.createTextNode(' · '+(o.reversible?'reversible':'not reversible')+' · '+o.evidence));
+      left.append(meta);
+      row.append(left);
+      const btn=mkel('button','Approve','secondary');
+      btn.onclick=()=>approve(deliveryId,o.action,btn);
+      row.append(btn);
+      opts.append(row);
+    });
+    opts.append(mkel('div',plan.why_a_human_decides,'ometa'));
+    box.append(opts);
+  }
+
   const usage=r.token_usage;
   if(usage&&usage.by_agent&&Object.keys(usage.by_agent).length){
-    const cost=mkel('div',undefined,'evid cost-strip');
+    const cost=mkel('div',undefined,'evid');
     cost.append(mkel('h4','What this investigation cost — the agent’s own OpenTelemetry gen_ai.* telemetry, read back through the same Grafana MCP server'));
     const grid=mkel('div',undefined,'costgrid');
     Object.entries(usage.by_agent).forEach(([agent,counts])=>{
@@ -238,28 +609,129 @@ function renderInvestigation(payload){
     total.append(mkel('small','tokens on '+(r.model||'gemini')));
     grid.append(total);
     cost.append(grid);
-    const link=mkel('a','Query these series through Grafana MCP ↗');
+    const link=mkel('a','Query these series through Grafana MCP ↗','costlink');
     link.href='/v1/integrations/grafana/ai-observability';link.target='_blank';link.rel='noreferrer';
-    link.className='costlink';
     cost.append(link);
     box.append(cost);
   }
-  const foot=mkel('div',undefined,'invfoot');
-  foot.append(mkel('span','The gate already decided. These agents explain the decision and offer options; approving one is a human action recorded as a Grafana annotation.','small'));
-  box.append(foot);
+
+  box.append(mkel('div','The gate already decided and the failure class came from FFmpeg’s own output. These agents corroborate that decision and offer bounded options; a supervisor approves.','invfoot'));
 
   const raw=mkel('details',undefined,'raw');
   raw.append(mkel('summary','Inspect the raw MCP payload'));
-  const pre=mkel('pre',JSON.stringify(payload,null,2));
-  raw.append(pre);box.append(raw);
+  raw.append(mkel('pre',JSON.stringify(payload,null,2)));
+  box.append(raw);
   box.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
-function showProof(label,data){const p=$('#proof');p.hidden=false;p.textContent=label+'\n\n'+JSON.stringify(data,null,2);p.scrollIntoView({behavior:'smooth',block:'nearest'})}
-async function investigate(id,b){b.disabled=true;b.textContent='Agents investigating…';const r=await fetch(`/v1/jeopardy/${id}/investigate`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({operator_id:'web-judge'})});const data=await r.json();if(r.ok&&data.data&&data.data.outputs){renderInvestigation(data)}else{showProof('AGENT ABSTAINED — DETERMINISTIC GATE NOT PASSED',data)}b.disabled=false;b.textContent='Ask ADK agents'}
-async function approve(id,b){b.disabled=true;const r=await fetch(`/v1/deliveries/${id}/remediation`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action:'increase_workers',operator_id:'web-judge',approved:true})});const data=await r.json();showProof('HUMAN APPROVAL + GRAFANA ANNOTATION',data);await load()}
-const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-$('#proofButton').onclick=async()=>{const b=$('#proofButton');b.disabled=true;try{showProof('JUDGE PROOF','Creating a near-deadline delivery with a controlled poison input…');const payload={title:'Judge proof: premiere package',contractual_date:new Date(Date.now()+12000).toISOString(),penalty_tier:'premiere',fault_mode:'poison_input',specs:[{name:'festival',width:640,height:360,video_codec:'libx264',video_bitrate_kbps:800}]};const created=await fetch('/v1/deliveries',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)}).then(r=>r.json());const id=created.data.delivery_id;let result;for(let n=1;n<=3;n++){showProof('JUDGE PROOF',`Real FFmpeg observation ${n}/3…`);result=await fetch(`/v1/deliveries/${id}/run`,{method:'POST'}).then(r=>r.json());if(n<3)await pause(5200)}showProof('DETERMINISTIC GATE',result);await load();if(result.jeopardy.verdict==='at_risk'){const report=await fetch(`/v1/jeopardy/${id}/investigate`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({operator_id:'web-judge'})}).then(r=>r.json());if(report.data&&report.data.outputs){$('#proof').hidden=true;renderInvestigation(report)}else{showProof('AGENT ABSTAINED',report)}}}catch(error){showProof('PROOF FAILED',{message:error.message})}finally{b.disabled=false}};
-$('#create').onsubmit=async e=>{e.preventDefault();const payload={title:$('#title').value,contractual_date:new Date(deadline.value).toISOString(),penalty_tier:'priority',fault_mode:$('#fault').value,specs:[{name:'proxy',width:320,height:180,video_codec:'libx264',video_bitrate_kbps:300},{name:'review',width:640,height:360,video_codec:'libx264',video_bitrate_kbps:800}]};const r=await fetch('/v1/deliveries',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});if(!r.ok)alert('Could not create delivery');else await load()};load();
+
+function showProof(label,data){
+  const p=$('#proof');p.hidden=false;
+  p.textContent=label+'\n\n'+(typeof data==='string'?data:JSON.stringify(data,null,2));
+  p.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+async function investigate(id,b){
+  b.disabled=true;const original=b.textContent;b.textContent='Agents investigating…';
+  try{
+    const r=await fetch(`/v1/jeopardy/${id}/investigate`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({operator_id:'web-judge'})});
+    const data=await r.json();
+    if(r.ok&&data.data&&data.data.outputs){$('#proof').hidden=true;renderInvestigation(data,id)}
+    else showProof('AGENT ABSTAINED — DETERMINISTIC GATE NOT PASSED',data);
+  }finally{b.disabled=false;b.textContent=original}
+}
+
+async function approve(id,action,b){
+  b.disabled=true;b.textContent='Approving…';
+  try{
+    const r=await fetch(`/v1/deliveries/${id}/remediation`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({action,operator_id:'web-judge',approved:true})});
+    const data=await r.json();
+    showProof(r.ok?'HUMAN APPROVAL + GRAFANA ANNOTATION':'APPROVAL REFUSED',data);
+    await load();
+  }finally{b.disabled=false;b.textContent='Approve'}
+}
+
+/* ---------- MCP panel render, read multimodally ---------- */
+$('#panelButton').onclick=async()=>{
+  const b=$('#panelButton');const out=$('#panelOut');
+  b.disabled=true;b.textContent='Rendering…';
+  out.replaceChildren(mkel('div','Grafana is rendering the panel and Gemini is reading it…','quiet'));
+  try{
+    const r=await fetch('/v1/integrations/grafana/panel-reading?panel_id=2&hours=6');
+    const data=await r.json();
+    out.replaceChildren();
+    if(!r.ok){out.append(mkel('div','Panel render unavailable: '+(data.detail&&data.detail.message||'unknown'),'empty'));return}
+    const x=data.data;
+    const wrap=mkel('div',undefined,'inv');wrap.hidden=false;
+    const head=mkel('div',undefined,'invhead');
+    head.append(mkel('h3','What the chart shows'));
+    const pills=mkel('div',undefined,'pillrow');
+    pills.append(mkel('span',x.tool,'mini ok'));
+    pills.append(mkel('span','official mcp grafana','mini'));
+    pills.append(mkel('span',x.model,'mini'));
+    pills.append(mkel('span','decision: '+x.decision_source,'mini ok'));
+    head.append(pills);wrap.append(head);
+    if(x.image_data_uri){
+      const fig=mkel('div',undefined,'evid');
+      const img=document.createElement('img');
+      img.src=x.image_data_uri;img.alt='Grafana panel: contractual schedule budget over time';
+      img.style.maxWidth='100%';img.style.border='1px solid var(--line)';img.style.borderRadius='3px';
+      fig.append(mkel('h4','The exact PNG Grafana rendered and Gemini was given'));
+      fig.append(img);
+      wrap.append(fig);
+    }
+    const body=mkel('div',undefined,'chain');
+    body.append(mkel('h4','Gemini reading the picture'));
+    const agent=mkel('div',undefined,'agent');
+    const ah=mkel('div',undefined,'agenthead');
+    ah.append(mkel('span','1','anum'),mkel('b','Panel reader'));
+    ah.append(mkel('span','describes, never decides','role'));
+    agent.append(ah);agent.append(agentBody(x.reading));
+    body.append(agent);wrap.append(body);
+    wrap.append(mkel('div',x.note,'invfoot'));
+    out.append(wrap);
+    wrap.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }catch(e){out.replaceChildren(mkel('div','Panel render failed: '+e.message,'empty'))}
+  finally{b.disabled=false;b.textContent='Render the panel through MCP'}
+};
+
+/* ---------- judge proof ---------- */
+$('#proofButton').onclick=async()=>{
+  const b=$('#proofButton');b.disabled=true;
+  try{
+    $('#inv').hidden=true;
+    showProof('JUDGE PROOF','Creating a near-deadline delivery whose encoder does not exist…');
+    const payload={title:'Judge proof: premiere package',contractual_date:new Date(Date.now()+12000).toISOString(),penalty_tier:'premiere',fault_mode:'wrong_codec',specs:[{name:'festival',width:640,height:360,video_codec:'libx264',video_bitrate_kbps:800}]};
+    const created=await (await fetch('/v1/deliveries',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)})).json();
+    const id=created.data.delivery_id;
+    let result;
+    for(let n=1;n<=3;n++){
+      showProof('JUDGE PROOF',`Real FFmpeg observation ${n}/3…`);
+      result=await (await fetch(`/v1/deliveries/${id}/run`,{method:'POST'})).json();
+      if(n<3)await pause(5200);
+    }
+    showProof('DETERMINISTIC GATE',result);
+    await load();
+    if(result.jeopardy&&result.jeopardy.verdict==='at_risk'){
+      const report=await (await fetch(`/v1/jeopardy/${id}/investigate`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({operator_id:'web-judge'})})).json();
+      if(report.data&&report.data.outputs){$('#proof').hidden=true;renderInvestigation(report,id)}
+      else showProof('AGENT ABSTAINED',report);
+    }
+  }catch(error){showProof('PROOF FAILED',{message:error.message})}
+  finally{b.disabled=false}
+};
+
+$('#create').onsubmit=async e=>{
+  e.preventDefault();
+  const payload={title:$('#title').value,contractual_date:new Date(deadline.value).toISOString(),penalty_tier:'priority',fault_mode:$('#fault').value,specs:[
+    {name:'proxy',width:320,height:180,video_codec:'libx264',video_bitrate_kbps:300},
+    {name:'review',width:640,height:360,video_codec:'libx264',video_bitrate_kbps:800}
+  ]};
+  const r=await fetch('/v1/deliveries',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
+  if(!r.ok)showProof('COULD NOT CREATE DELIVERY',await r.json());
+  else await load();
+};
+
+load();
 </script>
 </body>
 </html>

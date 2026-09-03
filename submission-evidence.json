@@ -4,12 +4,56 @@
   "track": "Grafana",
   "public_url": "https://slate-delivery-slo-109051079423.us-central1.run.app",
   "repository": "https://github.com/usv240/slate",
+  "grafana_dashboard": "https://35-255-68-247.sslip.io/d/slate-delivery-slo/slate-c2b7-contractual-delivery-slo?kiosk",
   "license": "Apache-2.0",
-  "google_runtime": {"status": "verified", "evidence": "/health"},
-  "partner_runtime": {"status": "verified", "technology": "official grafana/mcp-grafana", "evidence": "/v1/integrations/grafana/evidence"},
-  "telemetry": ["Prometheus", "Loki", "Tempo", "OpenTelemetry"],
+  "google_runtime": {
+    "status": "verified",
+    "technologies": ["Google ADK", "Gemini 2.5 Flash on Vertex AI", "Cloud Run", "Firestore", "Secret Manager"],
+    "evidence": "/health"
+  },
+  "partner_runtime": {
+    "status": "verified",
+    "technology": "official grafana/mcp-grafana v1.1.0 over stdio",
+    "reads": ["query_prometheus", "query_loki_logs", "tempo_get-trace"],
+    "writes": ["alerting_manage_rules", "create_annotation"],
+    "rendering": ["get_panel_image"],
+    "evidence": "/v1/integrations/grafana/evidence"
+  },
+  "telemetry": ["Prometheus", "Loki", "Tempo", "OpenTelemetry", "gen_ai.* semantic conventions"],
   "decision_owner": "deterministic three-threshold gate plus delivery supervisor",
-  "claims_excluded": ["real CDN receiver", "autonomous remediation", "production-scale evaluation"],
+  "classification_owner": "deterministic classifier over FFmpeg stderr, exit status, output bytes and QC result",
+  "model_boundary": {
+    "may": ["corroborate the gate", "corroborate the failure class", "propose typed options", "describe a rendered panel"],
+    "may_not": ["set or change a verdict", "assign a failure class", "execute a remediation", "author an alert rule", "change a contractual date"]
+  },
+  "non_circularity": {
+    "claim": "The failure class cannot be the injected scenario read back",
+    "enforced_by": [
+      "tests/test_classify.py::test_the_classifier_cannot_see_the_injected_scenario",
+      "tests/test_classify.py::test_the_measurement_path_never_reads_the_injected_scenario",
+      "tests/test_pipeline.py::test_no_span_or_metric_carries_the_injected_scenario"
+    ]
+  },
+  "judge_contrast": {
+    "positive": "an encoder that does not exist; two windows stay healthy, the third opens jeopardy, Diagnose quotes the real stderr",
+    "control": "a healthy run classifies as no failure, and the agent abstains without calling a model when the gate has not passed",
+    "restraint": "approval is refused with HTTP 409 for any action the agent did not propose"
+  },
+  "evaluation": {
+    "classifier_scenarios": 5,
+    "includes_healthy_control": true,
+    "unrecognised_reported_as": "transcode_failure, counted as a miss",
+    "gate_fixtures": "constructed schedule histories, labelled as fixtures",
+    "lead_time": "projection from a measured p95 onto a stated delivery size"
+  },
+  "claims_excluded": [
+    "real CDN receiver",
+    "autonomous remediation",
+    "production-scale evaluation",
+    "conceptual novelty of schedule-budget forecasting",
+    "Grafana Cloud AI Observability as a configured dependency",
+    "capacity starvation detection"
+  ],
   "submission_video": {"status": "pending_external"},
   "devpost": {"status": "pending_external"}
 }

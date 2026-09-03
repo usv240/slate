@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi.testclient import TestClient
 
 from slate_app.main import app
+from slate_app.main import store as main_store
 
 
 def test_health_is_honest_about_simulated_endpoint():
@@ -147,3 +148,71 @@ def test_at_risk_investigation_invokes_the_adk_runtime(monkeypatch):
     assert response.status_code == 200, response.text
     assert calls == [("del_agent_runtime_path", "at_risk", "judge")]
     assert response.json()["data"]["status"] == "completed"
+
+
+def test_report_export_is_a_downloadable_artifact():
+    client = TestClient(app)
+    payload = {
+        "title": "Report export test",
+        "contractual_date": (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat(),
+        "specs": [{"name": "hd", "width": 640, "height": 360, "video_bitrate_kbps": 800}],
+    }
+    delivery_id = client.post("/v1/deliveries", json=payload).json()["data"]["delivery_id"]
+    response = client.get(f"/v1/deliveries/{delivery_id}/report")
+    assert response.status_code == 200
+    assert "attachment" in response.headers["content-disposition"]
+    assert "Deterministic jeopardy gate" in response.text
+    assert "simulated" in response.text
+
+
+def test_approval_is_refused_for_an_action_the_agent_did_not_propose():
+    client = TestClient(app)
+    payload = {
+        "title": "Bound approval test",
+        "contractual_date": (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat(),
+        "specs": [{"name": "hd", "width": 640, "height": 360, "video_bitrate_kbps": 800}],
+    }
+    delivery_id = client.post("/v1/deliveries", json=payload).json()["data"]["delivery_id"]
+    record = main_store.get(delivery_id)
+    record.last_investigation = {
+        "remediation_plan": {
+            "options": [
+                {
+                    "action": "requeue_safe",
+                    "summary": "Re-run the failed rendition with the corrected encoder.",
+                    "schedule_cost_seconds": 120,
+                    "reversible": True,
+                    "evidence": "Unknown encoder in stderr.",
+                }
+            ],
+            "recommended_action": "requeue_safe",
+            "why_a_human_decides": "The contractual date is the supervisor's to defend.",
+        }
+    }
+    main_store.put(record)
+
+    refused = client.post(
+        f"/v1/deliveries/{delivery_id}/remediation",
+        json={"action": "escalate_deadline", "operator_id": "judge", "approved": True},
+    )
+    assert refused.status_code == 409
+    assert refused.json()["detail"]["code"] == "action_not_proposed"
+
+    allowed = client.post(
+        f"/v1/deliveries/{delivery_id}/remediation",
+        json={"action": "requeue_safe", "operator_id": "judge", "approved": True},
+    )
+    assert allowed.status_code == 200
+    assert allowed.json()["data"]["human_approved"] is True
+
+
+def test_delete_removes_the_delivery():
+    client = TestClient(app)
+    payload = {
+        "title": "Delete test",
+        "contractual_date": (datetime.now(timezone.utc) + timedelta(hours=2)).isoformat(),
+        "specs": [{"name": "hd", "width": 640, "height": 360, "video_bitrate_kbps": 800}],
+    }
+    delivery_id = client.post("/v1/deliveries", json=payload).json()["data"]["delivery_id"]
+    assert client.delete(f"/v1/deliveries/{delivery_id}").json()["data"]["deleted"] is True
+    assert client.get(f"/v1/jeopardy/{delivery_id}").status_code == 404

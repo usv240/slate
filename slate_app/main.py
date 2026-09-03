@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import time
 import uuid
@@ -14,6 +15,9 @@ from .gate import evaluate_jeopardy
 from .grafana_mcp import (
     GrafanaMcp,
     GrafanaNotConfigured,
+    create_delivery_alert_rule,
+    delete_alert_rule,
+    get_panel_image,
     query_loki,
     query_prometheus,
     query_tempo,
@@ -26,6 +30,7 @@ from .models import (
     InvestigationRequest,
     RemediationApproval,
 )
+from .report import render_report
 from .pipeline import PipelineRunner
 from .store import DeliveryStore
 from .telemetry import SCHEDULE_BUDGET, event
@@ -194,6 +199,93 @@ async def grafana_ai_observability() -> dict[str, object]:
     }
 
 
+@app.get("/v1/integrations/grafana/panel-reading")
+async def grafana_panel_reading(panel_id: int = 2, hours: int = 6) -> dict[str, object]:
+    """Grafana renders the panel, MCP carries the PNG, Gemini reads the chart.
+
+    This is the loop closing on itself: the agent's operational sense is the same
+    dashboard a supervisor trusts, read as an image rather than as numbers it was
+    handed. The reading is explicitly commentary. `decision_source` stays with
+    the deterministic gate, and nothing here can change a verdict.
+    """
+
+    try:
+        rendered = await get_panel_image(panel_id, hours=hours)
+    except GrafanaNotConfigured as exc:
+        raise HTTPException(
+            503, detail={"code": "grafana_mcp_not_configured", "message": str(exc)}
+        ) from exc
+    if rendered["is_error"]:
+        raise HTTPException(
+            502,
+            detail={
+                "code": "panel_render_failed",
+                "message": "Grafana could not render the panel; no reading was produced.",
+            },
+        )
+
+    image = next(
+        (item for item in rendered["content"] if item.get("type") == "image" and item.get("data")),
+        None,
+    )
+    if image is None:
+        raise HTTPException(
+            502,
+            detail={"code": "panel_image_missing", "message": "MCP returned no image content."},
+        )
+
+    import base64
+
+    from google import genai
+    from google.genai import types as genai_types
+
+    client = genai.Client(
+        vertexai=True,
+        project=os.environ["GOOGLE_CLOUD_PROJECT"],
+        location=os.environ["GOOGLE_CLOUD_LOCATION"],
+    )
+    response = await asyncio.to_thread(
+        client.models.generate_content,
+        model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
+        contents=[
+            genai_types.Part.from_bytes(
+                data=base64.b64decode(image["data"]),
+                mime_type=image.get("mimeType", "image/png"),
+            ),
+            genai_types.Part.from_text(
+                text=(
+                    "This is a Grafana panel showing SLATE's contractual schedule budget in "
+                    "seconds over time. Describe only what the chart shows: the direction of "
+                    "travel, whether any series crosses zero, and roughly when. Zero is the "
+                    "contractual date boundary; below zero the delivery is projected to miss. "
+                    "Do not state a verdict and do not recommend an action. If the chart is "
+                    "empty or unreadable, say exactly that."
+                )
+            ),
+        ],
+    )
+    return {
+        "data": {
+            "transport": "official_mcp_grafana_stdio",
+            "tool": rendered["tool"],
+            "panel_id": panel_id,
+            "dashboard_uid": os.getenv("GRAFANA_DASHBOARD_UID", "slate-delivery-slo"),
+            "image_bytes": len(image.get("data", "")),
+            "mime_type": image.get("mimeType", "image/png"),
+            # The exact PNG the model was given, so a reader can check the
+            # reading against the picture rather than taking it on trust.
+            "image_data_uri": f"data:{image.get('mimeType', 'image/png')};base64,{image['data']}",
+            "model": os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
+            "reading": response.text,
+            "decision_source": "deterministic_gate",
+            "note": (
+                "Gemini is describing a picture Grafana drew. It cannot set or change a "
+                "jeopardy verdict."
+            ),
+        }
+    }
+
+
 @app.get("/v1/integrations/grafana/traces/{trace_id}")
 async def grafana_trace(trace_id: str) -> dict[str, object]:
     if len(trace_id) != 32 or any(character not in "0123456789abcdef" for character in trace_id.lower()):
@@ -210,10 +302,48 @@ def metrics() -> Response:
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
+def _rule_uid(result: dict[str, object]) -> str | None:
+    """Pull the created rule's UID out of the MCP tool response."""
+
+    for item in result.get("content", []) or []:
+        text = item.get("text") if isinstance(item, dict) else None
+        if not text:
+            continue
+        try:
+            payload = json.loads(text)
+        except (TypeError, ValueError):
+            continue
+        if isinstance(payload, dict):
+            for key in ("uid", "ruleUid", "rule_uid"):
+                if isinstance(payload.get(key), str):
+                    return payload[key]
+    return None
+
+
 @app.post("/v1/deliveries", status_code=201)
-def create_delivery(request: CreateDelivery) -> dict[str, object]:
+async def create_delivery(request: CreateDelivery) -> dict[str, object]:
     delivery_id = f"del_{uuid.uuid4().hex[:12]}"
     record = DeliveryRecord(delivery_id=delivery_id, pending_specs=len(request.specs), **request.model_dump())
+
+    # Every delivery gets its own Grafana-managed alert rule, written through
+    # the official MCP server. SLATE authors it, not Gemini: a model that cannot
+    # set the verdict must not author the rule that encodes it either.
+    try:
+        result = await create_delivery_alert_rule(
+            delivery_id, record.title, record.contractual_date.isoformat()
+        )
+        record.alert_rule = {
+            "provisioned": not result["is_error"],
+            "tool": result["tool"],
+            "transport": "official_mcp_grafana_stdio",
+            "uid": _rule_uid(result),
+            "detail": None if not result["is_error"] else "grafana_rejected_rule",
+        }
+    except GrafanaNotConfigured as exc:
+        record.alert_rule = {"provisioned": False, "detail": f"grafana_mcp_not_configured: {exc}"}
+    except Exception as exc:  # noqa: BLE001 - alerting must never block a delivery
+        record.alert_rule = {"provisioned": False, "detail": f"{type(exc).__name__}"}
+
     store.put(record)
     event(
         "delivery_created",
@@ -221,9 +351,30 @@ def create_delivery(request: CreateDelivery) -> dict[str, object]:
         title=record.title,
         contractual_date=record.contractual_date.isoformat(),
         specs=len(record.specs),
-        fault_mode=record.fault_mode,
+        qc_rules=list(record.qc_rules),
+        alert_rule_provisioned=bool((record.alert_rule or {}).get("provisioned")),
     )
     return {"data": record.model_dump(mode="json")}
+
+
+@app.delete("/v1/deliveries/{delivery_id}")
+async def delete_delivery(delivery_id: str) -> dict[str, object]:
+    """Remove a delivery and the Grafana alert rule provisioned with it."""
+
+    record = store.get(delivery_id)
+    if not record:
+        raise HTTPException(404, detail={"code": "delivery_not_found", "message": "Unknown delivery."})
+    removed_rule = False
+    rule_uid = (record.alert_rule or {}).get("uid")
+    if isinstance(rule_uid, str):
+        try:
+            result = await delete_alert_rule(rule_uid)
+            removed_rule = not result["is_error"]
+        except Exception:  # noqa: BLE001
+            removed_rule = False
+    store.delete(delivery_id)
+    event("delivery_deleted", delivery_id=delivery_id, alert_rule_removed=removed_rule)
+    return {"data": {"deleted": True, "delivery_id": delivery_id, "alert_rule_removed": removed_rule}}
 
 
 @app.get("/v1/deliveries")
@@ -254,8 +405,11 @@ def run_delivery(delivery_id: str) -> dict[str, object]:
     gate = evaluate_jeopardy(record, now)
     if gate.verdict == "at_risk":
         record.status = "at_risk"
-    elif previous_status == "at_risk" and record.package_complete:
+        record.recovering = False
+    elif record.package_complete and (previous_status == "at_risk" or record.recovering):
+        # An approved remediation cleared the jeopardy and the package completed.
         record.status = "recovered"
+        record.recovering = False
     else:
         record.status = pipeline_status
     store.put(record)
@@ -321,6 +475,8 @@ async def investigate(delivery_id: str, request: InvestigationRequest) -> dict[s
                 "message": "The Google ADK investigation did not complete; no verdict or remediation was changed.",
             },
         ) from exc
+    record.last_investigation = report
+    store.put(record)
     return {"data": report, "gate": gate.model_dump(mode="json")}
 
 
@@ -338,6 +494,22 @@ async def remediation(delivery_id: str, request: RemediationApproval) -> dict[st
         )
         return {"data": {"executed": False, "reason": "operator_rejected"}}
 
+    # An operator may only approve an action the agent actually proposed for this
+    # delivery. Without this, the approval button and the agent's reasoning are
+    # two unrelated things that merely sit next to each other on the page.
+    plan = (record.last_investigation or {}).get("remediation_plan") if record.last_investigation else None
+    proposed = {option["action"] for option in (plan or {}).get("options", [])} if plan else set()
+    if proposed and request.action not in proposed:
+        raise HTTPException(
+            409,
+            detail={
+                "code": "action_not_proposed",
+                "message": "The agent did not propose this action for this delivery.",
+                "proposed": sorted(proposed),
+            },
+        )
+
+    was_at_risk = evaluate_jeopardy(record).verdict == "at_risk"
     if request.action == "increase_workers":
         record.active_workers = min(16, record.active_workers + 1)
     elif request.action == "requeue_safe":
@@ -347,11 +519,23 @@ async def remediation(delivery_id: str, request: RemediationApproval) -> dict[st
         record.status = "queued"
         record.package_complete = False
         record.simulated_delivery_accepted = None
+        record.burn_observations = []
+        record.recovering = was_at_risk
     # Contract priority and deadline escalation are recorded for a supervisor but
     # never mutate contractual truth automatically.
     gate = evaluate_jeopardy(record)
     if request.action == "increase_workers" and gate.verdict == "at_risk":
         record.status = "at_risk"
+    record.decisions.append(
+        {
+            "action": request.action,
+            "operator_id": request.operator_id,
+            "approved": True,
+            "decided_at": datetime.now(timezone.utc).isoformat(),
+            "verdict_before": "at_risk" if was_at_risk else "healthy",
+            "verdict_after": gate.verdict,
+        }
+    )
     store.put(record)
     annotation = None
     try:
@@ -373,7 +557,29 @@ async def remediation(delivery_id: str, request: RemediationApproval) -> dict[st
             "executed": request.action in {"increase_workers", "requeue_safe"},
             "action": request.action,
             "human_approved": True,
+            "recorded_only": request.action in {"prioritize_contract", "escalate_deadline"},
+            "next_step": (
+                "Run the pipeline again to complete the requeued renditions."
+                if request.action == "requeue_safe"
+                else None
+            ),
             "grafana_annotation": annotation,
             "jeopardy": gate.model_dump(mode="json"),
+            "delivery": record.model_dump(mode="json"),
         }
     }
+
+
+@app.get("/v1/deliveries/{delivery_id}/report")
+def delivery_report(delivery_id: str) -> Response:
+    """The artifact a delivery supervisor would forward to a client."""
+
+    record = store.get(delivery_id)
+    if not record:
+        raise HTTPException(404, detail={"code": "delivery_not_found", "message": "Unknown delivery."})
+    markdown = render_report(record, evaluate_jeopardy(record))
+    return Response(
+        markdown,
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="slate-{delivery_id}.md"'},
+    )

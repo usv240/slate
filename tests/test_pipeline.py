@@ -43,3 +43,55 @@ def test_real_poison_input_fails(tmp_path: Path):
     assert result.jobs[0].failure_class == "poison_input"
     assert result.pending_specs == 1
     assert result.last_trace_id is not None
+
+
+@pytest.mark.parametrize(
+    "scenario,expected",
+    [
+        ("none", None),
+        ("poison_input", "poison_input"),
+        ("wrong_codec", "codec_fault"),
+        ("timeout", "timeout"),
+        ("qc_rule_change", "qc_failure"),
+    ],
+)
+def test_every_scenario_is_classified_from_real_ffmpeg_output(tmp_path: Path, scenario, expected):
+    """The end-to-end guarantee behind the published classifier accuracy.
+
+    Each scenario is turned into real configuration -- an unreadable file, a
+    missing encoder, a real deadline, an extra conformance rule -- and the class
+    must then be recovered from FFmpeg's own output. The classifier cannot read
+    the scenario name, so a pass here is not a tautology.
+    """
+
+    try:
+        runner = PipelineRunner(tmp_path)
+    except RuntimeError:
+        pytest.skip("ffmpeg is not installed")
+    result = runner.run(make_record(scenario))
+    assert result.jobs[0].failure_class == expected
+
+
+def test_no_span_or_metric_carries_the_injected_scenario(tmp_path: Path):
+    """A judge reading the trace must not find the answer written on it."""
+
+    try:
+        runner = PipelineRunner(tmp_path)
+    except RuntimeError:
+        pytest.skip("ffmpeg is not installed")
+    record = make_record("wrong_codec")
+    record.title = "Scenario name must not leak into telemetry"
+    result = runner.run(record)
+    assert result.jobs[0].failure_class == "codec_fault"
+    # The stderr the classifier used is retained on the job for the report and
+    # for Loki, but the scenario label itself is nowhere in the emitted result.
+    assert "wrong_codec" not in result.model_dump_json()
+
+
+def test_deterministic_failures_are_not_retried(tmp_path: Path):
+    try:
+        runner = PipelineRunner(tmp_path)
+    except RuntimeError:
+        pytest.skip("ffmpeg is not installed")
+    result = runner.run(make_record("wrong_codec"))
+    assert result.jobs[0].retries == 0

@@ -58,6 +58,13 @@ class DeliveryStore:
             record = self._records.get(delivery_id)
             return record.model_copy(deep=True) if record else None
 
+    def delete(self, delivery_id: str) -> None:
+        if self._collection is not None:
+            self._collection.document(delivery_id).delete()
+            return
+        with self._lock:
+            self._records.pop(delivery_id, None)
+
     def list(self) -> list[DeliveryRecord]:
         if self._collection is not None:
             records = [DeliveryRecord.model_validate(item.to_dict()) for item in self._collection.stream()]

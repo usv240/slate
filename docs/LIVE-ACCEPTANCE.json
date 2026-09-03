@@ -1,15 +1,9 @@
 {
-  "checked_at": "2026-08-24T23:50:20Z",
-  "cloud_run_revision": "slate-delivery-slo-00016-gm7",
-  "source_commit": "f680f8e",
-  "ci": {
-    "run_id": 32790560294,
-    "passed": true,
-    "tests_passed": 28,
-    "production_container_passed": true
-  },
+  "checked_at": "2026-09-02T21:40:00Z",
+  "cloud_run_revision": "slate-delivery-slo-00027-4zz",
   "project_url": "https://slate-delivery-slo-109051079423.us-central1.run.app",
   "grafana_url": "https://35-255-68-247.sslip.io",
+  "grafana_dashboard": "https://35-255-68-247.sslip.io/d/slate-delivery-slo/slate-c2b7-contractual-delivery-slo?kiosk",
   "health": {
     "status": "healthy",
     "google_vertex": true,
@@ -17,87 +11,121 @@
     "state_store": true,
     "state_backend": "firestore",
     "otlp_export": true,
-    "agent_runtime_ready": true
+    "agent_runtime_ready": true,
+    "min_instances": 1
   },
   "mcp": {
     "server": "official grafana/mcp-grafana",
     "version": "1.1.0",
     "transport": "stdio",
-    "query_prometheus": {
-      "passed": true,
-      "queries": [
-        {
-          "metric": "slate_schedule_budget_seconds",
-          "delivery_id": "del_aa4b9feffebe"
-        },
-        {
-          "metric": "slate_queue_depth",
-          "delivery_id": "del_aa4b9feffebe"
-        },
-        {
-          "expression": "sum by (failure_class) (slate_job_failures_total)"
-        }
-      ],
-      "observed_failure_class": "codec_fault",
-      "observed_failure_count": 3
+    "reads": {
+      "query_prometheus": {
+        "passed": true,
+        "queries": [
+          "slate_schedule_budget_seconds{delivery_id=\"...\"}",
+          "slate_queue_depth{delivery_id=\"...\"}",
+          "sum by (failure_class) (slate_job_failures_total)"
+        ],
+        "observed_failure_class": "codec_fault",
+        "observed_failure_count": 3
+      },
+      "query_loki_logs": {
+        "passed": true,
+        "rows_returned": 10,
+        "note": "The previous LogQL returned zero rows on every run because the OTLP body is a JSON string nested inside `body`; a single `| json` stage never exposed `delivery_id`. The query now reparses after `line_format` and the agents finally receive the real FFmpeg stderr.",
+        "observed_stderr_excerpt": "Unknown encoder 'encoder_that_does_not_exist'"
+      },
+      "tempo_get-trace": {
+        "passed": true,
+        "root_span": "delivery.pipeline",
+        "note": "The span no longer carries the injected scenario or the delivery title."
+      }
     },
-    "query_loki_logs": {
-      "passed": true,
-      "result": "empty_result_reported_without_invention"
+    "writes": {
+      "alerting_manage_rules": {
+        "passed": true,
+        "operation": "create",
+        "rule_uid": "cfx2uye4jgnwgd",
+        "folder_uid": "slate-media-delivery",
+        "verified_via": "GET /api/v1/provisioning/alert-rules/{uid} on the live stack",
+        "note": "A Grafana-managed alert rule is provisioned per delivery at creation, by SLATE and not by Gemini."
+      },
+      "create_annotation": {
+        "passed": true,
+        "precondition": "written only after an operator approves a remediation"
+      }
     },
-    "tempo_get_trace": {
-      "passed": true,
-      "trace_id": "721a87e2e917a17f9431e8f9dda84616",
-      "observed_root_span": "delivery.pipeline",
-      "observed_failure_mode": "wrong_codec"
-    },
-    "create_annotation": {
-      "passed": true,
-      "annotation_id": 1,
-      "evidence_checked_at": "2026-08-20T21:31:00Z"
+    "rendering": {
+      "get_panel_image": {
+        "passed": true,
+        "dashboard_uid": "slate-delivery-slo",
+        "panel_id": 2,
+        "image_base64_length": 35220,
+        "read_by": "gemini-2.5-flash on Vertex AI, as an inline image part",
+        "decision_source": "deterministic_gate",
+        "note": "Grafana renders the panel, MCP carries the PNG, Gemini describes the chart. The reading is commentary and can never become a verdict."
+      }
     }
   },
   "deterministic_gate_proof": {
-    "delivery_id": "del_aa4b9feffebe",
-    "statuses": ["degraded", "degraded", "at_risk"],
-    "failure_class": "codec_fault",
-    "trace_ids": [
-      "7ccd74ed12f832a6bf1f4cc2a8fb1e3b",
-      "6643d1dbdc81cb631e65cbba9250c703",
-      "721a87e2e917a17f9431e8f9dda84616"
+    "windows": [
+      {"run": 1, "verdict": "healthy", "failed": ["projected_completion_after_contract", "positive_burn_sustained_two_windows"]},
+      {"run": 2, "verdict": "healthy", "failed": ["positive_burn_sustained_two_windows"]},
+      {"run": 3, "verdict": "at_risk", "failed": []}
     ],
-    "burn_rates": [0.998133, 0.995528],
-    "passed": [
-      "projected_completion_after_contract",
-      "positive_burn_sustained_two_windows",
-      "work_remaining_positive"
+    "note": "One window cannot open an incident. The third window satisfied all three thresholds."
+  },
+  "classifier_proof": {
+    "source": "slate_app/classify.py",
+    "sees_injected_scenario": false,
+    "enforced_by": [
+      "tests/test_classify.py asserts the classifier source contains no reference to fault_mode",
+      "tests/test_classify.py asserts the measurement path (_transcode, _attempt, _qc, run) contains none either",
+      "tests/test_pipeline.py asserts no emitted job result contains the scenario name"
     ],
-    "failed": []
+    "observed": {"failure_class": "codec_fault", "exit_code": 8, "retries": 0},
+    "note": "Deterministic failures are not retried; only timeout and unclassified are, once."
   },
   "adk_proof": {
     "status": "completed",
-    "session_id": "investigation_5851315e4da6",
     "model": "gemini-2.5-flash",
     "agents": ["Watch", "Diagnose", "Remediate"],
     "decision_source": "deterministic_gate",
+    "classification_source": "deterministic_stderr_classifier",
     "observability_source": "grafana_mcp",
-    "bound_evidence_called_once": true,
-    "diagnosis": "codec_fault",
-    "unsupported_alternatives_rejected": [
-      "poison_input",
-      "timeout",
-      "capacity_starvation",
-      "qc_rule_change"
-    ],
-    "remediation_option_count": 3,
+    "token_usage": {"input": 9477, "output": 1245},
+    "diagnosis_corroborated_from": "FFmpeg stderr quoted out of Loki, plus the Prometheus failure counter and the Tempo span tree",
+    "remediation_plan": {
+      "typed": true,
+      "options": ["requeue_safe", "prioritize_contract", "escalate_deadline"],
+      "recommended": "requeue_safe"
+    },
     "requires_human": true
   },
+  "remediation_loop_proof": {
+    "unproposed_action_refused": {"action": "increase_workers", "status": 409, "code": "action_not_proposed"},
+    "approved_action": {"action": "requeue_safe", "executed": true, "annotation_written": true},
+    "after_rerun": {"status": "recovered", "package_complete": true, "simulated_delivery_accepted": true},
+    "note": "An operator may only approve an option the agent actually proposed."
+  },
+  "report_export": {"passed": true, "bytes": 7018, "format": "markdown"},
+  "board_state": {
+    "seeded_deliveries": 3,
+    "contract_windows_hours": [9, 26, 52],
+    "note": "Stale duplicate judge-proof records were deleted along with their Grafana alert rules."
+  },
+  "visual_check": {
+    "desktop_1440": "clean",
+    "narrow_500": "clean; single column, no horizontal scroll",
+    "note": "Edge headless on Windows will not lay out below roughly 500 CSS px, so a 390px capture is a crop of a 500px layout rather than a page defect."
+  },
+  "tests": {"local": "47 passed, 9 skipped", "skipped_reason": "FFmpeg-dependent; CI installs FFmpeg and runs them"},
   "limitations": [
-    "This is one deployed agent-quality case, not a statistical efficacy claim.",
-    "The synthetic wrong-codec fault and deadline were constructed for evaluation.",
-    "The delivery receiver remains simulated; ingest, FFmpeg, QC, telemetry and agent calls are real.",
-    "The scoped Loki query returned no lines; the agent disclosed that absence.",
-    "The failure counter is service-wide; the delivery-specific Tempo trace supplies the scoped fault evidence."
+    "The delivery receiver remains simulated; ingest, FFmpeg, QC, packaging, telemetry and agent calls are real.",
+    "Five classifier scenarios is engineering evidence, not a statistical accuracy claim.",
+    "Schedule histories in the benchmark's gate_evaluation are constructed fixtures.",
+    "Lead time is a projection from a measured p95 onto a stated delivery size.",
+    "The stack is self-hosted Grafana OSS; Grafana Cloud-only features are unavailable and unused."
   ],
   "contains_secrets": false
 }

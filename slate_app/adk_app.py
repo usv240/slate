@@ -12,8 +12,14 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
-from .grafana_mcp import GrafanaNotConfigured, query_loki, query_prometheus, query_tempo
-from .models import DeliveryRecord, JeopardyResult
+from .grafana_mcp import (
+    GrafanaMcp,
+    GrafanaNotConfigured,
+    loki_request,
+    prometheus_request,
+    tempo_request,
+)
+from .models import DeliveryRecord, JeopardyResult, RemediationPlan
 from .ai_telemetry import genai_span, record_usage
 from .telemetry import event, stage_span
 
@@ -53,7 +59,19 @@ def _prometheus_queries(delivery_id: str) -> dict[str, str]:
 
 
 def _loki_query(delivery_id: str) -> str:
-    return f'{{service_name="slate"}} | json | delivery_id="{delivery_id}"'
+    """LogQL that actually reaches SLATE's structured pipeline events.
+
+    OTLP delivers the log line as a JSON *string* inside the `body` field, so a
+    single `| json` stage exposes `body` and never `delivery_id`. The previous
+    query therefore returned zero rows on every run, including in the recorded
+    acceptance artifact, and the agents silently had no log evidence at all.
+    Reparsing after `line_format` unwraps the body and yields the real fields.
+    """
+
+    return (
+        '{service_name="slate"} | json | line_format "{{.body}}" | json '
+        f'| delivery_id="{delivery_id}"'
+    )
 
 
 async def run_investigation(
@@ -75,15 +93,20 @@ async def run_investigation(
         """Return exact Grafana MCP evidence bound to this delivery and trace."""
 
         queries = _prometheus_queries(delivery.delivery_id)
-        schedule, queue, failures, logs = await asyncio.gather(
-            query_prometheus(queries["schedule_budget"]),
-            query_prometheus(queries["queue_depth"]),
-            query_prometheus(queries["failures_by_class"]),
-            query_loki(_loki_query(delivery.delivery_id)),
-        )
-        trace_result: dict[str, Any] | None = None
+        logql = _loki_query(delivery.delivery_id)
+        requests = [
+            prometheus_request(queries["schedule_budget"]),
+            prometheus_request(queries["queue_depth"]),
+            prometheus_request(queries["failures_by_class"]),
+            loki_request(logql),
+        ]
         if delivery.last_trace_id:
-            trace_result = await query_tempo(delivery.last_trace_id)
+            requests.append(tempo_request(delivery.last_trace_id))
+        # One MCP session for the whole evidence sweep instead of one
+        # subprocess and handshake per query.
+        responses = await GrafanaMcp().call_many(requests)
+        schedule, queue, failures, logs = responses[:4]
+        trace_result: dict[str, Any] | None = responses[4] if delivery.last_trace_id else None
         result = {
             "delivery_id": delivery.delivery_id,
             "queries": queries,
@@ -92,7 +115,7 @@ async def run_investigation(
                 "queue_depth": queue,
                 "failures_by_class": failures,
             },
-            "loki_query": _loki_query(delivery.delivery_id),
+            "loki_query": logql,
             "loki": logs,
             "trace_id": delivery.last_trace_id,
             "tempo": trace_result,
@@ -116,10 +139,13 @@ async def run_investigation(
         name="Diagnose",
         model=MODEL,
         instruction=(
-            "Using {watch_evidence} and only its bound Prometheus, Loki, and Tempo evidence, "
-            "classify codec fault, poison input, timeout, capacity starvation, or QC rule change. "
-            "Name the specific log or trace evidence for the classification. If evidence is "
-            "insufficient, say uncertain; do not guess and do not change the gate."
+            "A deterministic classifier already assigned the failure class from FFmpeg's own "
+            "stderr, exit status and QC result; it is stated in the prompt and you cannot change "
+            "it. Your job is corroboration, not classification. Using {watch_evidence} and only "
+            "its bound Prometheus, Loki and Tempo evidence, quote the specific stderr text, exit "
+            "code or failed QC rule that supports the stated class, and say plainly if the "
+            "evidence does NOT support it or is missing. Never infer the cause from a delivery "
+            "title, a scenario name or any label that merely restates the class."
         ),
         output_key="diagnosis",
     )
@@ -127,10 +153,18 @@ async def run_investigation(
         name="Remediate",
         model=MODEL,
         instruction=(
-            "Using {watch_evidence} and {diagnosis}, propose exactly three bounded options with "
-            "estimated schedule cost. Never execute, scale, requeue, annotate, or change a "
-            "deadline. State that a delivery supervisor owns the decision."
+            "Using {watch_evidence} and {diagnosis}, produce three bounded remediation options. "
+            "Every option must use one of the four actions SLATE can actually perform: "
+            "requeue_safe (re-run the failed renditions with the corrected configuration), "
+            "increase_workers (add one parallel worker), prioritize_contract (record contractual "
+            "priority for a supervisor), escalate_deadline (record a deadline escalation request). "
+            "Give each option an honest schedule cost in seconds and mark whether it is "
+            "reversible. Cite the evidence for each. You never execute anything: a delivery "
+            "supervisor approves, and only then does SLATE act."
         ),
+        output_schema=RemediationPlan,
+        disallow_transfer_to_parent=True,
+        disallow_transfer_to_peers=True,
         output_key="remediation_options",
     )
     root_agent = SequentialAgent(
@@ -151,11 +185,17 @@ async def run_investigation(
         state=initial_state,
     )
     runner = Runner(app_name=APP_NAME, agent=root_agent, session_service=session_service)
+    observed = sorted({job.failure_class for job in delivery.jobs if job.failure_class})
+    failed_qc = sorted({rule for job in delivery.jobs for rule in job.qc_failures})
     prompt = (
         f"Investigate delivery {delivery.delivery_id}. The deterministic gate verdict is "
         f"{gate.verdict}; its immutable evidence is {initial_state['deterministic_gate']}. "
-        "Use Grafana MCP for every operational observation. Return evidence, diagnosis, and "
-        "human-only remediation options."
+        f"A deterministic classifier reading FFmpeg stderr, exit status and QC output assigned "
+        f"the failure class(es) {observed or ['none']}"
+        + (f" with failed QC rules {failed_qc}" if failed_qc else "")
+        + ". That classification is fixed. Use Grafana MCP for every operational observation. "
+        "Return corroborating evidence, a corroboration of the stated class, and human-only "
+        "remediation options."
     )
     message = types.Content(role="user", parts=[types.Part(text=prompt)])
     transcript: list[dict[str, str]] = []
@@ -198,10 +238,20 @@ async def run_investigation(
         session_id=session_id,
     )
     state = completed.state if completed else {}
+    raw_plan = state.get("remediation_options")
+    plan: dict[str, Any] | None = None
+    if raw_plan:
+        try:
+            candidate = json.loads(raw_plan) if isinstance(raw_plan, str) else raw_plan
+            plan = RemediationPlan.model_validate(candidate).model_dump(mode="json")
+        except Exception:
+            # A malformed plan is reported as absent rather than rendered as if
+            # it were an approved set of actions.
+            plan = None
     outputs = {
         "watch": state.get("watch_evidence"),
         "diagnose": state.get("diagnosis"),
-        "remediate": state.get("remediation_options"),
+        "remediate": raw_plan,
     }
     if not bound_evidence:
         raise RuntimeError("Watch did not retrieve its request-bound Grafana MCP evidence")
@@ -227,8 +277,11 @@ async def run_investigation(
         "session_id": session_id,
         "model": MODEL,
         "decision_source": "deterministic_gate",
+        "classification_source": "deterministic_stderr_classifier",
+        "observed_failure_classes": observed,
         "observability_source": "grafana_mcp",
         "bound_evidence": bound_evidence,
+        "remediation_plan": plan,
         "outputs": outputs,
         "transcript": transcript,
         "requires_human": True,

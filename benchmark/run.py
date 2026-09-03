@@ -23,11 +23,16 @@ from slate_app.models import BurnObservation, DeliveryRecord, RenditionSpec
 from slate_app.pipeline import PipelineRunner
 
 
+#: scenario -> the class a correct classifier must derive from observed output.
+#: The classifier never sees the scenario name; `slate_app.classify` is guarded by
+#: a test asserting it cannot read the injected fault at all. `none` is a control:
+#: a classifier that labels everything would fail it.
 FAULTS = {
     "poison_input": "poison_input",
     "wrong_codec": "codec_fault",
     "timeout": "timeout",
-    "qc_rule_change": "qc_rule_change",
+    "qc_rule_change": "qc_failure",
+    "none": None,
 }
 
 
@@ -41,6 +46,32 @@ def record(delivery_id: str, fault_mode: str, deadline: datetime) -> DeliveryRec
         fault_mode=fault_mode,
         pending_specs=1,
     )
+
+
+def measured_lead_time(p95_seconds: float, specs: int, contract_hours: float) -> dict[str, object]:
+    """Lead time derived from the p95 this run actually measured.
+
+    The schedule histories below are constructed fixtures for gate behaviour. This
+    number is different: the per-spec cost comes from the FFmpeg jobs executed a
+    moment ago, and it is projected onto a stated delivery size. The projection is
+    stated so it cannot be read as an observed production result.
+    """
+
+    work_remaining = specs * p95_seconds
+    window = contract_hours * 3600
+    budget = window - work_remaining
+    return {
+        "basis": "p95 measured from this run's real FFmpeg jobs, projected onto a stated delivery size",
+        "measured_p95_seconds_per_spec": round(p95_seconds, 6),
+        "projected_specs": specs,
+        "contract_window_hours": contract_hours,
+        "work_remaining_seconds": round(work_remaining, 3),
+        "schedule_budget_seconds": round(budget, 3),
+        "jeopardy_visible_before_deadline_seconds": round(max(0.0, window - work_remaining), 3)
+        if budget > 0
+        else 0.0,
+        "already_over_budget": budget <= 0,
+    }
 
 
 def gate_evaluation(now: datetime) -> dict[str, object]:
@@ -87,31 +118,50 @@ def run(output: Path) -> dict[str, object]:
             item = record(f"eval_{index}_{fault_mode}", fault_mode, now + timedelta(hours=1))
             started = time.perf_counter()
             result = runner.run(item)
-            observed = result.jobs[0].failure_class
+            job = result.jobs[0]
+            observed = job.failure_class
             rows.append({
-                "fault_mode": fault_mode,
+                "scenario": fault_mode,
                 "expected_class": expected,
                 "observed_class": observed,
                 "correct": observed == expected,
+                "classified_from": {
+                    "exit_code": job.exit_code,
+                    "output_bytes": job.output_bytes,
+                    "retries": job.retries,
+                    "qc_failures": job.qc_failures,
+                },
                 "real_pipeline_seconds": round(time.perf_counter() - started, 6),
-                "job": result.jobs[0].model_dump(mode="json"),
+                "job": job.model_dump(mode="json"),
             })
     durations = [row["real_pipeline_seconds"] for row in rows]
+    job_p95 = max((row["job"]["duration_seconds"] for row in rows), default=1.0)
     report = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "media_fixture_type": "self_authored_lavfi_source_processed_by_real_ffmpeg",
         "delivery_receiver": "simulated",
         "fault_results": rows,
+        "classifier": {
+            "source": "slate_app.classify, from FFmpeg stderr, exit status, output bytes and QC result",
+            "sees_injected_scenario": False,
+            "cases": len(rows),
+            "correct": sum(row["correct"] for row in rows),
+            "accuracy": sum(row["correct"] for row in rows) / len(rows),
+            "misses": [row["scenario"] for row in rows if not row["correct"]],
+        },
         "diagnosis_accuracy": sum(row["correct"] for row in rows) / len(rows),
+        "measured_lead_time": measured_lead_time(job_p95, specs=120, contract_hours=6),
         "pipeline_duration_seconds": {
             "median": round(statistics.median(durations), 6),
             "max": round(max(durations), 6),
         },
         "gate_evaluation": gate_evaluation(now),
         "limitations": [
-            "Schedule histories are constructed evaluation fixtures and are not labelled as production telemetry.",
-            "This benchmark evaluates deterministic fault labels, not Gemini's natural-language diagnosis quality.",
-            "The delivery receiver is simulated; ingest, transcode and QC execution are real.",
+            "Five scenarios is engineering evidence, not a statistical accuracy claim.",
+            "Schedule histories under gate_evaluation are constructed fixtures, not production telemetry.",
+            "measured_lead_time projects a measured p95 onto a stated delivery size; the delivery size and contract window are assumptions, not observations.",
+            "This benchmark scores the deterministic classifier. Gemini's corroboration quality is assessed separately and is not reduced to a number here.",
+            "The delivery receiver is simulated; ingest, transcode, QC and packaging execution are real.",
         ],
     }
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -126,7 +176,8 @@ def main() -> None:
     report = run(args.output)
     print(json.dumps({
         "output": str(args.output),
-        "diagnosis_accuracy": report["diagnosis_accuracy"],
+        "classifier_accuracy": report["classifier"]["accuracy"],
+        "classifier_misses": report["classifier"]["misses"],
         "false_jeopardy_rate": report["gate_evaluation"]["false_jeopardy_rate"],
         "lead_time_seconds": report["gate_evaluation"]["lead_time_seconds"],
     }, indent=2))
