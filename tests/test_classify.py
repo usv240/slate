@@ -107,3 +107,17 @@ def test_plan_is_the_single_place_the_scenario_is_consumed():
         node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef) and node.name == "plan"
     )
     assert "fault_mode" in ast.unparse(plan)
+
+
+def test_the_pipeline_span_carries_no_scenario_or_title_attribute():
+    """The trace is what a judge and the Diagnose agent both read."""
+
+    source = Path(inspect.getfile(pipeline_module)).read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    run = next(
+        node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef) and node.name == "run"
+    )
+    body = ast.unparse(run)
+    span_call = body[body.index("stage_span('delivery.pipeline'") :].split(")")[0]
+    assert "fault_mode" not in span_call
+    assert "title" not in span_call

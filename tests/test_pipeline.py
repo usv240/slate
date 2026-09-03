@@ -72,8 +72,15 @@ def test_every_scenario_is_classified_from_real_ffmpeg_output(tmp_path: Path, sc
     assert result.jobs[0].failure_class == expected
 
 
-def test_no_span_or_metric_carries_the_injected_scenario(tmp_path: Path):
-    """A judge reading the trace must not find the answer written on it."""
+def test_no_telemetry_the_agent_reads_carries_the_injected_scenario(tmp_path: Path):
+    """A judge reading the telemetry must not find the answer written on it.
+
+    The delivery record keeps `fault_mode`, because that is the operator's own
+    request configuration and it is what `plan` turns into real inputs. What
+    must not carry it is anything the agents can read: the job result behind the
+    Prometheus labels and the Loki events, and the pipeline span's attributes.
+    The agents receive Grafana evidence and the gate result, never the record.
+    """
 
     try:
         runner = PipelineRunner(tmp_path)
@@ -82,10 +89,20 @@ def test_no_span_or_metric_carries_the_injected_scenario(tmp_path: Path):
     record = make_record("wrong_codec")
     record.title = "Scenario name must not leak into telemetry"
     result = runner.run(record)
-    assert result.jobs[0].failure_class == "codec_fault"
-    # The stderr the classifier used is retained on the job for the report and
-    # for Loki, but the scenario label itself is nowhere in the emitted result.
-    assert "wrong_codec" not in result.model_dump_json()
+
+    job = result.jobs[0]
+    assert job.failure_class == "codec_fault"
+    # The class was recovered from FFmpeg's own words, so the raw evidence is
+    # allowed to travel; the scenario label is not.
+    assert "wrong_codec" not in job.model_dump_json()
+    assert "Scenario name must not leak" not in job.model_dump_json()
+
+    # And the gate result the agents are given carries neither.
+    from slate_app.gate import evaluate_jeopardy
+
+    gate = evaluate_jeopardy(result).model_dump_json()
+    assert "wrong_codec" not in gate
+    assert "Scenario name must not leak" not in gate
 
 
 def test_deterministic_failures_are_not_retried(tmp_path: Path):
