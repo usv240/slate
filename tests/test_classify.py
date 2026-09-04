@@ -72,14 +72,35 @@ def test_only_transient_classes_are_retried():
     assert is_retryable(None) is False
 
 
+def _strip_docstrings(tree: ast.AST) -> ast.AST:
+    """Remove only docstrings, leaving every other string constant in place.
+
+    An earlier version of this guard blanked *every* string constant, which meant
+    a literal reference such as `getattr(record, "fault_mode")` or
+    `kwargs["fault_mode"]` passed straight through it. Mutation testing caught
+    that: the guard reported success with the leak present.
+    """
+
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            continue
+        body = getattr(node, "body", [])
+        if (
+            body
+            and isinstance(body[0], ast.Expr)
+            and isinstance(body[0].value, ast.Constant)
+            and isinstance(body[0].value.value, str)
+        ):
+            body[0].value.value = ""
+    return tree
+
+
 def test_the_classifier_cannot_see_the_injected_scenario():
     source = Path(inspect.getfile(classify)).read_text(encoding="utf-8")
-    # The docstring names the field it must never read; strip comments and
-    # docstrings so the guard checks executable code rather than prose.
-    tree = ast.parse(source)
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Constant) and isinstance(node.value, str):
-            node.value = ""
+    # Docstrings name the field the classifier must never read, so they are
+    # blanked. Every other reference -- attribute, name, or string literal --
+    # counts as a leak.
+    tree = _strip_docstrings(ast.parse(source))
     assert "fault_mode" not in ast.unparse(tree)
 
 
@@ -94,6 +115,7 @@ def test_the_measurement_path_never_reads_the_injected_scenario(function_name):
         for node in ast.walk(tree)
         if isinstance(node, ast.FunctionDef) and node.name == function_name
     )
+    _strip_docstrings(target)
     assert "fault_mode" not in ast.unparse(target), (
         f"{function_name} reads the injected scenario; the observed failure class would "
         "become the answer key again"

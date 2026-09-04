@@ -49,7 +49,13 @@ Updated: 2026-09-02. Live revision `slate-delivery-slo-00027-4zz`, `min-instance
 - [x] `docs/PRIOR-ART.md` naming the incumbents and conceding the mechanic
 - [x] Board seeded with three contracted titles; stale duplicate judge-proof records and their
       alert rules removed
-- [x] 47 tests pass locally; 9 FFmpeg-dependent tests run in CI
+- [x] 48 tests pass locally; the 9 FFmpeg-dependent proofs run in CI, where
+      `SLATE_REQUIRE_FULL_SUITE=1` makes a skip a failure so a broken FFmpeg
+      install cannot leave the badge green over proofs that never executed
+- [x] `scripts/mutation_check.py` breaks the classifier six ways in CI and fails
+      if a guard does not notice. It found one guard that blanked every string
+      constant before checking, so `getattr(record, "fault_mode")` passed
+      straight through it — the guard reported success with the leak present
 
 ## Release tasks
 

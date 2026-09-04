@@ -31,7 +31,18 @@ jobs:
               raise SystemExit(f"Non-permitted AI dependencies: {found}")
           PY
       - name: Test
+        # A proof that skips is not a proof. The FFmpeg-dependent scenario tests
+        # skip themselves on a machine without FFmpeg, which is right locally and
+        # dangerous here: if the install step above ever broke, all nine would
+        # skip and this job would still be green.
+        env:
+          SLATE_REQUIRE_FULL_SUITE: "1"
         run: python -m pytest -q
+
+      - name: Mutation-check the non-circularity guards
+        # Break the classifier on purpose and confirm the guards notice. The
+        # first version of one guard passed with the leak present.
+        run: python scripts/mutation_check.py
       - name: Compile
         run: python -m compileall -q slate_app
       - name: Validate evidence and dashboard JSON

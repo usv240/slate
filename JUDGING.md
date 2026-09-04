@@ -54,6 +54,8 @@ class must be recovered from what FFmpeg actually printed.
 | `tests/test_classify.py` | Asserts the classifier's own source contains no `fault_mode`, and neither does the measurement path |
 | `tests/test_pipeline.py` | Runs all five scenarios through real FFmpeg and asserts the recovered class; asserts no emitted result contains the scenario name |
 | `benchmark/latest.json` | Five scenarios including a healthy control a label-everything classifier would fail; unrecognised failures are reported as `transcode_failure` and counted as misses |
+| `scripts/mutation_check.py` | Breaks the classifier six ways on purpose and fails if a guard does not notice. Runs in CI. It caught one of our own guards passing while the leak was present |
+| CI with `SLATE_REQUIRE_FULL_SUITE=1` | The nine FFmpeg proofs skip themselves without FFmpeg. In CI a skip is a failure, so a broken install cannot leave the badge green over proofs that never ran |
 
 ## Verifying the rest is not theatre
 
