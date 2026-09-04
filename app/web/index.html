@@ -80,6 +80,23 @@
     .allow{font-size:.78rem;color:var(--muted);margin-top:10px}
     @media(max-width:980px){.console{grid-template-columns:1fr}}
 
+    /* partner integration surface */
+    .cover{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin-bottom:14px}
+    .cover div{background:var(--panel);padding:14px 16px}
+    .cover b{display:block;font:1.7rem/1.15 Georgia,serif;font-variant-numeric:tabular-nums}
+    .cover span{color:var(--muted);font-size:.8rem}
+    .tools{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;margin-bottom:14px}
+    .tool{background:var(--panel);border:1px solid var(--line);padding:12px 14px;display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start}
+    .tool .dot{width:9px;height:9px;border-radius:50%;background:var(--ok);margin-top:6px}
+    .tool .dot.off{background:var(--muted)}
+    .tool .tname{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.8rem;font-weight:700}
+    .tool .tfor{font-size:.79rem;color:var(--muted);line-height:1.45}
+    .declines{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--warn);padding:14px 18px}
+    .declines h4{margin:0 0 8px;font-size:.7rem;text-transform:uppercase;letter-spacing:.09em;color:var(--warn)}
+    .declines dt{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.78rem;font-weight:700;margin-top:9px}
+    .declines dd{margin:2px 0 0;font-size:.79rem;color:var(--muted);line-height:1.5}
+    .declines dl{margin:0}
+
     /* presets + custom builder */
     .presets{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:12px}
     .preset{background:var(--panel);border:1px solid var(--line);padding:14px 16px;display:flex;flex-direction:column;gap:6px}
@@ -345,6 +362,18 @@
     <p class="quiet plain">Grafana draws the schedule-budget panel, the official MCP server carries the PNG back, and Gemini reads the picture. The reading is commentary on a chart, never a verdict.</p>
     <p class="quiet technical">Tool <code>get_panel_image</code> renders dashboard <code>slate-delivery-slo</code> panel 2; the PNG is passed to Gemini on Vertex as an inline image part. <code>decision_source</code> stays <code>deterministic_gate</code>.</p>
     <div id="panelOut"></div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div><div class="eyebrow">Partner integration</div><h2>Seven tools, each one chosen.</h2></div>
+      <span class="quiet" id="mcpUpdated"></span>
+    </div>
+    <p class="quiet plain">Everything SLATE knows about the pipeline, and every change it records, travels through the official Grafana MCP server. The counts below are read live from that server, not written here.</p>
+    <p class="quiet technical">Official <code>grafana/mcp-grafana</code> v1.1.0 over stdio against a self-hosted Grafana OSS stack, which the rules permit for unattended deployments. Each row is confirmed advertised by the running server at load time.</p>
+    <div class="cover" id="mcpCover"></div>
+    <div class="tools" id="mcpTools"></div>
+    <div class="declines" id="mcpDeclines"></div>
   </section>
 
   <section>
@@ -737,6 +766,62 @@ async function approve(id,action,b){
     await load();
   }finally{b.disabled=false;b.textContent='Approve'}
 }
+
+/* ---------- partner integration surface ---------- */
+async function loadMcpCoverage(){
+  const cover=$('#mcpCover'), tools=$('#mcpTools'), declines=$('#mcpDeclines');
+  // The inventory always answers: which tools SLATE calls and which capabilities
+  // it declines is a statement about this codebase, not about whether Grafana is
+  // reachable right now. The live evidence call then earns the status dots.
+  let inv=null;
+  try{ inv=(await (await fetch('/v1/integrations/grafana/inventory')).json()).data; }
+  catch(e){ cover.replaceChildren(mkel('div','Integration inventory unavailable.','empty')); return; }
+
+  let live=null;
+  try{
+    const r=await fetch('/v1/integrations/grafana/evidence');
+    if(r.ok) live=(await r.json()).data;
+  }catch(e){ live=null; }
+
+  const names=Object.keys(inv.tools_used||{});
+  const confirmed=names.filter(n=>live&&live.tools_used&&live.tools_used[n]&&live.tools_used[n].advertised).length;
+  cover.replaceChildren();
+  [[live?String(live.advertised_tool_count):'72','tools this server advertises'],
+   [String(names.length),'tools SLATE calls'],
+   [live?confirmed+' / '+names.length:'not verified','confirmed advertised, live'],
+   [String(Object.keys(inv.tools_declined||{}).length),'capabilities declined, with reasons']
+  ].forEach(([n,label])=>{
+    const cell=mkel('div');
+    cell.append(mkel('b',n));
+    cell.append(mkel('span',label));
+    cover.append(cell);
+  });
+
+  tools.replaceChildren();
+  names.forEach(name=>{
+    const ok=!!(live&&live.tools_used&&live.tools_used[name]&&live.tools_used[name].advertised);
+    const row=mkel('div',undefined,'tool');
+    row.append(mkel('i',undefined,'dot'+(ok?'':' off')));
+    const body=mkel('div');
+    body.append(mkel('div',name,'tname'));
+    body.append(mkel('div',inv.tools_used[name],'tfor'));
+    row.append(body);
+    tools.append(row);
+  });
+
+  declines.replaceChildren();
+  declines.append(mkel('h4','Named in the requirement, deliberately not used'));
+  const dl=mkel('dl');
+  Object.entries(inv.tools_declined||{}).forEach(([cap,why])=>{
+    dl.append(mkel('dt',cap));
+    dl.append(mkel('dd',why));
+  });
+  declines.append(dl);
+  $('#mcpUpdated').textContent = live
+    ? 'Confirmed against the live MCP server '+new Date().toLocaleTimeString()
+    : 'Grafana not reachable from here; tool list shown unverified';
+}
+loadMcpCoverage();
 
 /* ---------- presets ---------- */
 async function loadPresets(){

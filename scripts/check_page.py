@@ -50,6 +50,8 @@ REQUIRED = (
     ('class="specrow"', "the custom rendition builder never rendered its rows"),
     ('class="chip"', "the PromQL example chips never rendered"),
     ("contractual deliveries", "the summary bar is missing"),
+    ('class="tool"', "the Grafana MCP tool inventory never rendered"),
+    ("deliberately not used", "the declined-capabilities panel never rendered"),
 )
 
 def rendered_only(dom: str) -> str:

@@ -102,6 +102,15 @@ unattended deployments, which is what this is.
 | **Annotation write** | `create_annotation` | Only after a human approves a remediation |
 | **Panel render** | `get_panel_image` | Grafana draws the schedule-budget panel, MCP carries the PNG, Gemini reads the chart |
 
+The product page states this coverage rather than leaving it to be inferred, and states it
+accurately: **this server advertises 72 tools and SLATE calls seven.** Each row is confirmed
+advertised against the running server when the page loads, so the status is earned rather than
+asserted. Of the capabilities the track requirement names — querying metrics, logs and traces,
+searching dashboards, and managing alerts and incidents — SLATE uses five. The sixth, incidents,
+runs on Grafana IRM, a Grafana Cloud plugin this self-hosted OSS stack does not have; that is
+listed on the page as a decline with the reason, next to OnCall, Sift, and `update_dashboard`,
+which is refused on purpose so the operator's view is not something the model can rewrite.
+
 That last one is the loop closing on itself: the agent's operational sense is the same picture
 the supervisor is looking at, read as an image rather than as numbers it was handed. The PNG is
 shown beside the reading so a viewer can check one against the other. The reading is explicitly

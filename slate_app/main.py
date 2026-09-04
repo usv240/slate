@@ -178,6 +178,26 @@ async def grafana_evidence() -> dict[str, object]:
     }
 
 
+@app.get("/v1/integrations/grafana/inventory")
+def grafana_inventory() -> dict[str, object]:
+    """What SLATE calls and what it declines, without needing Grafana to answer.
+
+    The live evidence endpoint confirms each tool against the running server, but
+    it needs credentials to do so. This is the same statement of intent, served
+    unconditionally, so a reader still sees which capabilities were skipped and
+    why even when the stack is unreachable.
+    """
+
+    return {
+        "data": {
+            "server": "official grafana/mcp-grafana v1.1.0 over stdio",
+            "tools_used": TOOLS_USED,
+            "tools_declined": TOOLS_DECLINED,
+            "live_confirmation": "/v1/integrations/grafana/evidence",
+        }
+    }
+
+
 @app.get("/v1/integrations/grafana/dashboards")
 async def grafana_dashboards(query: str = "slate") -> dict[str, object]:
     """Search dashboards through MCP and hand a human links back to Grafana.
