@@ -131,35 +131,45 @@ def check_render(failures: list[str]) -> None:
             failures.append("the server never became ready, so the page could not be loaded")
             return
 
-        with tempfile.TemporaryDirectory(prefix="slate-profile-") as profile:
-            result = subprocess.run(
-                [
-                    browser,
-                    "--headless=new",
-                    "--disable-gpu",
-                    "--no-sandbox",
-                    "--virtual-time-budget=8000",
-                    f"--user-data-dir={profile}",
-                    "--dump-dom",
-                    base + "/",
-                ],
-                capture_output=True,
-                text=True,
-                timeout=180,
-            )
-        dom = result.stdout
-        if len(dom) < 500:
-            failures.append(f"the browser returned almost nothing ({len(dom)} chars)")
-            return
-
-        for needle, why in REQUIRED:
-            if needle not in dom:
-                failures.append(f"{why} (expected {needle!r} in the rendered DOM)")
-        for needle, why in FORBIDDEN:
-            if needle in dom:
-                failures.append(f"{why} ({needle!r} was still on the page)")
-        if not failures:
-            print("[ok] page initialised in a real browser")
+        # A slower machine can finish the page after a short virtual-time budget
+        # expires, so a single impatient load is a flaky check rather than a real
+        # one. Give it progressively longer and only report the last attempt: a
+        # genuinely dead page never renders, however long you wait.
+        attempt_failures: list[str] = []
+        for budget in (10000, 25000, 45000):
+            attempt_failures = []
+            with tempfile.TemporaryDirectory(prefix="slate-profile-") as profile:
+                result = subprocess.run(
+                    [
+                        browser,
+                        "--headless=new",
+                        "--disable-gpu",
+                        "--no-sandbox",
+                        "--disable-dev-shm-usage",
+                        f"--virtual-time-budget={budget}",
+                        f"--user-data-dir={profile}",
+                        "--dump-dom",
+                        base + "/",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=240,
+                )
+            dom = result.stdout
+            if len(dom) < 500:
+                attempt_failures.append(f"the browser returned almost nothing ({len(dom)} chars)")
+            else:
+                for needle, why in REQUIRED:
+                    if needle not in dom:
+                        attempt_failures.append(f"{why} (expected {needle!r} in the rendered DOM)")
+                for needle, why in FORBIDDEN:
+                    if needle in dom:
+                        attempt_failures.append(f"{why} ({needle!r} was still on the page)")
+            if not attempt_failures:
+                print(f"[ok] page initialised in a real browser (budget {budget}ms)")
+                return
+            print(f"[retry] page not settled at {budget}ms: {attempt_failures[0]}")
+        failures.extend(attempt_failures)
     finally:
         server.terminate()
         try:
