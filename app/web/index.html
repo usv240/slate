@@ -64,6 +64,22 @@
     .stat b{font-size:1.7rem;display:block;font-variant-numeric:tabular-nums;line-height:1.15}
     .stat span{color:var(--muted);font-size:.82rem}
 
+    /* judge console */
+    .console{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:16px;margin:8px 0 30px}
+    .console>*{min-width:0}
+    .panel{background:var(--panel);border:1px solid var(--rule,var(--line));border:1px solid var(--line);padding:18px 20px}
+    .panel h3{margin:0 0 4px;font-family:Georgia,serif;font-size:1.15rem}
+    .panel .sub{color:var(--muted);font-size:.85rem;margin:0 0 12px}
+    .videoframe{position:relative;width:100%;aspect-ratio:16/9;background:var(--code-bg);border:1px solid var(--line);border-radius:3px;overflow:hidden}
+    .videoframe iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+    .videoempty{display:grid;place-items:center;height:100%;text-align:center;padding:18px;color:var(--code-ink);font-size:.88rem;line-height:1.55}
+    .keyrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+    .keyout{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.74rem;background:var(--code-bg);color:var(--code-ink);padding:10px 12px;border-radius:3px;overflow-wrap:anywhere;margin:0 0 8px}
+    .keyout[hidden]{display:none}
+    .snippet{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.72rem;background:var(--code-bg);color:var(--code-ink);padding:12px;border-radius:3px;overflow-x:auto;margin:0;white-space:pre}
+    .allow{font-size:.78rem;color:var(--muted);margin-top:10px}
+    @media(max-width:980px){.console{grid-template-columns:1fr}}
+
     .section-head{display:flex;align-items:end;justify-content:space-between;gap:16px;margin:44px 0 14px;flex-wrap:wrap}
     h2{font-family:Georgia,"Times New Roman",serif;font-size:1.9rem;margin:0}
     .quiet{color:var(--muted);font-size:.88rem}
@@ -238,6 +254,28 @@
     <div class="stat"><b id="risk">0</b><span>currently at risk</span></div>
     <div class="stat"><b id="tightest">—</b><span>tightest schedule budget</span></div>
     <div class="stat"><b>Never</b><span>automatic remediation</span></div>
+  </section>
+
+  <section class="console">
+    <div class="panel">
+      <h3>The three-minute demonstration</h3>
+      <p class="sub" id="demoNote">Checking…</p>
+      <div class="videoframe" id="demoFrame">
+        <div class="videoempty">Loading…</div>
+      </div>
+      <div class="links" id="demoLinks"></div>
+    </div>
+    <div class="panel">
+      <h3>Run it yourself</h3>
+      <p class="sub">No signup. A key is optional and only raises the allowance on the two endpoints that spend Gemini tokens; every read is uncapped.</p>
+      <div class="keyrow">
+        <button class="primary" id="keyButton" type="button">Get a free API key</button>
+        <button class="secondary" id="consoleProof" type="button">Run the live analysis</button>
+      </div>
+      <pre class="keyout" id="keyOut" hidden></pre>
+      <pre class="snippet" id="keySnippet">curl -s https://slate-delivery-slo-109051079423.us-central1.run.app/health</pre>
+      <p class="allow" id="allowNote"></p>
+    </div>
   </section>
 
   <section>
@@ -649,6 +687,94 @@ async function approve(id,action,b){
     await load();
   }finally{b.disabled=false;b.textContent='Approve'}
 }
+
+/* ---------- judge console ---------- */
+const ORIGIN=location.origin;
+async function loadDemo(){
+  const frame=$('#demoFrame'), note=$('#demoNote'), links=$('#demoLinks');
+  try{
+    const d=(await (await fetch('/v1/demo')).json()).data;
+    links.replaceChildren();
+    if(d.published&&d.embed_url){
+      note.textContent='Recorded demonstration of this deployment, under three minutes.';
+      const f=document.createElement('iframe');
+      f.src=d.embed_url;f.title='SLATE demonstration';f.loading='lazy';
+      f.allow='accelerometer; clipboard-write; encrypted-media; picture-in-picture';
+      f.setAttribute('allowfullscreen','');
+      frame.replaceChildren(f);
+      const w=mkel('a','Open on the video host ↗');w.href=d.watch_url;w.target='_blank';w.rel='noreferrer';
+      links.append(w);
+      if(d.download_url){const dl=mkel('a','Download the file ↓');dl.href=d.download_url;links.append(dl)}
+    }else{
+      note.textContent='Not recorded yet — and we are not going to pretend otherwise.';
+      const empty=mkel('div',undefined,'videoempty');
+      empty.append(mkel('div','No demonstration video is published for this deployment yet.'));
+      empty.append(mkel('div','The judge proof on this page runs the same path live, on real FFmpeg, in about twenty seconds.'));
+      frame.replaceChildren(empty);
+    }
+  }catch(e){
+    note.textContent='Could not reach the demo endpoint.';
+    frame.replaceChildren(mkel('div','—','videoempty'));
+  }
+}
+
+let JUDGE_KEY=null;
+function renderSnippet(){
+  // Short lines on purpose: a judge should be able to read the snippet without
+  // scrolling it sideways, and paste it without editing anything.
+  const auth=JUDGE_KEY?` \
+  -H "Authorization: Bearer $KEY"`:'';
+  const keyLine=JUDGE_KEY?`KEY=${JUDGE_KEY}
+`:'';
+  $('#keySnippet').textContent =
+    `S=${ORIGIN}
+`+keyLine+`
+`+
+    `# the deterministic gate for every contracted title
+`+
+    `curl -s $S/v1/deliveries
+
+`+
+    `# what the agents were bound to, through official Grafana MCP
+`+
+    `curl -s $S/v1/integrations/grafana/evidence
+
+`+
+    `# Grafana renders the panel, Gemini reads the chart
+`+
+    `curl -s $S/v1/integrations/grafana/panel-reading${auth}`;
+}
+renderSnippet();
+
+$('#keyButton').onclick=async()=>{
+  const b=$('#keyButton'), out=$('#keyOut'), note=$('#allowNote');
+  b.disabled=true;b.textContent='Minting…';
+  try{
+    const r=await fetch('/v1/keys?label=judge',{method:'POST'});
+    const data=await r.json();
+    if(!r.ok){
+      out.hidden=false;out.textContent=(data.detail&&data.detail.message)||'Key issuing unavailable.';
+      note.textContent='Everything on this page still works without a key.';
+      return;
+    }
+    JUDGE_KEY=data.data.api_key;
+    out.hidden=false;out.textContent=JUDGE_KEY;
+    note.textContent=`${data.data.quota_per_window} calls per ${Math.round(data.data.window_seconds/60)} minutes on the two endpoints that spend tokens. Nothing about this key is stored server side — it is an HMAC over its own claims.`;
+    renderSnippet();
+    try{await navigator.clipboard.writeText(JUDGE_KEY);b.textContent='Copied to clipboard';}
+    catch(e){b.textContent='Key issued';}
+    setTimeout(()=>{b.textContent='Get another key'},2500);
+  }catch(e){
+    out.hidden=false;out.textContent='Could not reach the key endpoint.';
+  }finally{b.disabled=false}
+};
+
+$('#consoleProof').onclick=()=>{
+  document.querySelector('#proofButton').click();
+  document.querySelector('#board').scrollIntoView({behavior:'smooth',block:'start'});
+};
+
+loadDemo();
 
 /* ---------- MCP panel render, read multimodally ---------- */
 $('#panelButton').onclick=async()=>{

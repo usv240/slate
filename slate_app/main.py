@@ -7,10 +7,18 @@ import time
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import FileResponse, Response
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 
+from .access import (
+    ANONYMOUS_QUOTA,
+    KEYED_QUOTA,
+    WINDOW_SECONDS,
+    KeyIssuingDisabled,
+    evaluate as evaluate_access,
+    issue_key,
+)
 from .gate import evaluate_jeopardy
 from .grafana_mcp import (
     GrafanaMcp,
@@ -200,7 +208,12 @@ async def grafana_ai_observability() -> dict[str, object]:
 
 
 @app.get("/v1/integrations/grafana/panel-reading")
-async def grafana_panel_reading(panel_id: int = 2, hours: int = 6) -> dict[str, object]:
+async def grafana_panel_reading(
+    request: Request,
+    panel_id: int = 2,
+    hours: int = 6,
+    authorization: str | None = Header(default=None),
+) -> dict[str, object]:
     """Grafana renders the panel, MCP carries the PNG, Gemini reads the chart.
 
     This is the loop closing on itself: the agent's operational sense is the same
@@ -209,6 +222,7 @@ async def grafana_panel_reading(panel_id: int = 2, hours: int = 6) -> dict[str, 
     the deterministic gate, and nothing here can change a verdict.
     """
 
+    allowance = _spend_guard(request, authorization)
     try:
         rendered = await get_panel_image(panel_id, hours=hours)
     except GrafanaNotConfigured as exc:
@@ -277,6 +291,7 @@ async def grafana_panel_reading(panel_id: int = 2, hours: int = 6) -> dict[str, 
             "image_data_uri": f"data:{image.get('mimeType', 'image/png')};base64,{image['data']}",
             "model": os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
             "reading": response.text,
+            "allowance": allowance,
             "decision_source": "deterministic_gate",
             "note": (
                 "Gemini is describing a picture Grafana drew. It cannot set or change a "
@@ -295,6 +310,101 @@ async def grafana_trace(trace_id: str) -> dict[str, object]:
     except GrafanaNotConfigured as exc:
         raise HTTPException(503, detail={"code": "grafana_mcp_not_configured", "message": str(exc)}) from exc
     return {"data": {"transport": "official_mcp_grafana_stdio", "tempo": result}}
+
+
+def _spend_guard(request: Request, authorization: str | None) -> dict[str, object]:
+    """Allow, or refuse with the numbers a caller needs to act on.
+
+    Applied only to the two endpoints that spend Gemini tokens. Reads are never
+    rate limited, and a key raises the allowance rather than granting access.
+    """
+
+    client_ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (
+        request.client.host if request.client else "unknown"
+    )
+    decision = evaluate_access(authorization=authorization, client_ip=client_ip)
+    if not decision.allowed:
+        raise HTTPException(
+            429,
+            detail={
+                "code": "rate_limited",
+                "message": (
+                    f"{decision.quota} calls per {WINDOW_SECONDS // 60} minutes on this endpoint. "
+                    + (
+                        "Try again shortly."
+                        if decision.keyed
+                        else "Get a free key from the judge console for a higher allowance."
+                    )
+                ),
+                "retry_after_seconds": decision.reset_in,
+                "keyed": decision.keyed,
+            },
+            headers={"Retry-After": str(decision.reset_in)},
+        )
+    return {
+        "quota": decision.quota,
+        "remaining": decision.remaining,
+        "window_seconds": WINDOW_SECONDS,
+        "keyed": decision.keyed,
+    }
+
+
+@app.post("/v1/keys", status_code=201)
+def create_key(label: str = "judge") -> dict[str, object]:
+    """Mint an optional key. No account, no stored row, never a gate."""
+
+    try:
+        return {"data": issue_key(label=label)}
+    except KeyIssuingDisabled as exc:
+        raise HTTPException(
+            503,
+            detail={
+                "code": "key_issuing_disabled",
+                "message": (
+                    "Key issuing is not configured on this deployment. Everything still "
+                    f"works anonymously at {ANONYMOUS_QUOTA} calls per "
+                    f"{WINDOW_SECONDS // 60} minutes on the two endpoints that spend tokens."
+                ),
+            },
+        ) from exc
+
+
+@app.get("/v1/demo")
+def demo_video() -> dict[str, object]:
+    """Where the three-minute demonstration lives, if it has been published yet.
+
+    Reported honestly rather than rendered as a broken player: until the video is
+    recorded and made public, this says so.
+    """
+
+    watch_url = os.getenv("SLATE_DEMO_VIDEO_URL") or None
+    download_url = os.getenv("SLATE_DEMO_VIDEO_DOWNLOAD_URL") or None
+    embed_url = None
+    if watch_url:
+        # youtube-nocookie keeps the embed from setting tracking cookies on a
+        # judge who only came here to watch the run.
+        for marker in ("watch?v=", "youtu.be/", "/embed/"):
+            if marker in watch_url:
+                video_id = watch_url.split(marker)[-1].split("&")[0].split("?")[0].strip("/")
+                embed_url = f"https://www.youtube-nocookie.com/embed/{video_id}"
+                break
+        if embed_url is None and "vimeo.com" in watch_url:
+            video_id = watch_url.rstrip("/").split("/")[-1]
+            embed_url = f"https://player.vimeo.com/video/{video_id}"
+    return {
+        "data": {
+            "published": bool(watch_url),
+            "watch_url": watch_url,
+            "embed_url": embed_url,
+            "download_url": download_url,
+            "runtime_limit_seconds": 180,
+            "note": (
+                "Recorded demonstration of this deployment."
+                if watch_url
+                else "Not recorded yet. The judge proof on this page runs the same path live."
+            ),
+        }
+    }
 
 
 @app.get("/metrics", include_in_schema=False)
@@ -428,7 +538,12 @@ def jeopardy(delivery_id: str) -> dict[str, object]:
 
 
 @app.post("/v1/jeopardy/{delivery_id}/investigate")
-async def investigate(delivery_id: str, request: InvestigationRequest) -> dict[str, object]:
+async def investigate(
+    delivery_id: str,
+    request: InvestigationRequest,
+    http_request: Request,
+    authorization: str | None = Header(default=None),
+) -> dict[str, object]:
     record = store.get(delivery_id)
     if not record:
         raise HTTPException(404, detail={"code": "delivery_not_found", "message": "Unknown delivery."})
@@ -449,6 +564,10 @@ async def investigate(delivery_id: str, request: InvestigationRequest) -> dict[s
                 "requires_human": True,
             }
         }
+
+    # Rate limited only once the gate has passed, so an abstention -- which calls
+    # no model and costs nothing -- never consumes a judge's allowance.
+    allowance = _spend_guard(http_request, authorization)
 
     # Lazy import keeps ordinary pipeline requests independent of ADK startup,
     # while this request path demonstrably invokes the real Google ADK runner.
@@ -477,7 +596,7 @@ async def investigate(delivery_id: str, request: InvestigationRequest) -> dict[s
         ) from exc
     record.last_investigation = report
     store.put(record)
-    return {"data": report, "gate": gate.model_dump(mode="json")}
+    return {"data": report, "gate": gate.model_dump(mode="json"), "allowance": allowance}
 
 
 @app.post("/v1/deliveries/{delivery_id}/remediation")
