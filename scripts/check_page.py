@@ -52,6 +52,24 @@ REQUIRED = (
     ("contractual deliveries", "the summary bar is missing"),
 )
 
+def rendered_only(dom: str) -> str:
+    """Strip script and style blocks before asserting on what the page *shows*.
+
+    `--dump-dom` returns the script source too, so a placeholder that also exists
+    as a string literal in the code -- `b.textContent = "Loading…"` -- matches
+    forever and the check fails on a page that is working perfectly. Assertions
+    have to run against rendered text, not source.
+
+    Note the companion trap: the browser dump must be decoded as UTF-8. Left to
+    the platform codepage on Windows it mangles every non-ASCII character, and a
+    needle containing one then never matches -- so the check quietly passes a
+    page it should have failed.
+    """
+
+    without_scripts = re.sub("<script[^>]*>.*?</script>", "", dom, flags=re.S | re.I)
+    return re.sub("<style[^>]*>.*?</style>", "", without_scripts, flags=re.S | re.I)
+
+
 #: Substrings that must be gone once the page has initialised.
 FORBIDDEN = (
     ("Loading&hellip;", "the demo panel never resolved"),
@@ -94,7 +112,10 @@ def check_syntax(failures: list[str]) -> None:
         handle.write(extract_script())
         path = handle.name
     try:
-        result = subprocess.run([node, "--check", path], capture_output=True, text=True)
+        result = subprocess.run(
+            [node, "--check", path], capture_output=True, text=True,
+            encoding="utf-8", errors="replace",
+        )
         if result.returncode != 0:
             detail = (result.stderr or result.stdout).strip().splitlines()
             failures.append("the page script does not parse:\n    " + "\n    ".join(detail[:6]))
@@ -153,9 +174,11 @@ def check_render(failures: list[str]) -> None:
                     ],
                     capture_output=True,
                     text=True,
+                    encoding="utf-8",
+                    errors="replace",
                     timeout=240,
                 )
-            dom = result.stdout
+            dom = rendered_only(result.stdout)
             if len(dom) < 500:
                 attempt_failures.append(f"the browser returned almost nothing ({len(dom)} chars)")
             else:
