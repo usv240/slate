@@ -74,7 +74,7 @@ def test_run_keeps_delivery_status_consistent_with_at_risk_gate(monkeypatch):
     from slate_app import main as main_module
     from slate_app.models import BurnObservation
 
-    def fake_run(self, record):
+    def fake_run(self, record, limit=None):
         observed_now = datetime.now(timezone.utc)
         record.status = "degraded"
         record.package_complete = False

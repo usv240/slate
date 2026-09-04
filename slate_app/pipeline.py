@@ -250,7 +250,15 @@ class PipelineRunner:
             qc_failures=qc_failures,
         )
 
-    def run(self, record: DeliveryRecord) -> DeliveryRecord:
+    def run(self, record: DeliveryRecord, limit: int | None = None) -> DeliveryRecord:
+        """Encode outstanding renditions, optionally only the next `limit` of them.
+
+        A facility works a delivery queue in waves rather than encoding every
+        rendition at once, and that is also the only honest way to show the case
+        that matters most: work still outstanding, nothing failed, and the
+        remaining measured work no longer fitting before the contractual date.
+        """
+
         directory = self.root / record.delivery_id
         directory.mkdir(parents=True, exist_ok=True)
         record.status = "running"
@@ -264,7 +272,10 @@ class PipelineRunner:
             if context.is_valid:
                 record.last_trace_id = format(context.trace_id, "032x")
             source = self._source(directory, record.delivery_id)
-            plans = self.plan(record, source)
+            already_passed = {job.spec_name for job in record.jobs if job.status == "passed"}
+            plans = [p for p in self.plan(record, source) if p.spec.name not in already_passed]
+            if limit is not None:
+                plans = plans[: max(0, limit)]
             jobs: list[JobResult] = []
             with ThreadPoolExecutor(max_workers=min(4, len(plans))) as executor:
                 futures = [executor.submit(self._transcode, record, plan) for plan in plans]
@@ -272,20 +283,27 @@ class PipelineRunner:
                     jobs.append(future.result())
                     record.pending_specs -= 1
                     QUEUE_DEPTH.labels(delivery_id=record.delivery_id).set(record.pending_specs)
-            record.jobs = sorted(jobs, key=lambda item: item.spec_name)
-            durations = sorted(job.duration_seconds for job in jobs)
+            # Keep results for renditions this wave did not touch.
+            encoded = {job.spec_name for job in jobs}
+            record.jobs = sorted(
+                [job for job in record.jobs if job.spec_name not in encoded] + jobs,
+                key=lambda item: item.spec_name,
+            )
+            durations = sorted(job.duration_seconds for job in record.jobs)
             if durations:
                 record.p95_seconds_per_spec = durations[min(len(durations) - 1, round(0.95 * len(durations)) - 1)]
-            failed = [job for job in jobs if job.status == "failed"]
-            # Failed renditions remain real outstanding work. Clearing the
-            # queue here made the jeopardy gate mathematically unreachable.
-            record.pending_specs = len(failed)
+            passed = {job.spec_name for job in record.jobs if job.status == "passed"}
+            failed = [job for job in record.jobs if job.status == "failed"]
+            # Anything not yet encoded successfully is still real outstanding
+            # work: a failed rendition and one this wave never reached both
+            # still have to happen before the date.
+            record.pending_specs = len([spec for spec in record.specs if spec.name not in passed])
             QUEUE_DEPTH.labels(delivery_id=record.delivery_id).set(record.pending_specs)
             record.retry_penalty_seconds = sum(max(record.p95_seconds_per_spec, job.duration_seconds) for job in failed)
             with stage_span("package.manifest", delivery_id=record.delivery_id):
                 manifest = {"delivery_id": record.delivery_id, "title": record.title, "generated_at": datetime.now(timezone.utc).isoformat(), "jobs": [job.model_dump() for job in record.jobs]}
                 (directory / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-                record.package_complete = not failed
+                record.package_complete = record.pending_specs == 0 and not failed
             with stage_span("deliver.simulated_endpoint", delivery_id=record.delivery_id, simulated=True):
                 record.simulated_delivery_accepted = record.package_complete
                 event("simulated_delivery_result", delivery_id=record.delivery_id, accepted=record.simulated_delivery_accepted, reason="complete" if record.package_complete else "rendition_or_qc_failure")

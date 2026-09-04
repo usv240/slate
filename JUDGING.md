@@ -58,6 +58,21 @@ class must be recovered from what FFmpeg actually printed.
 | `scripts/check_page.py` | Loads the page in a headless browser and asserts the DOM only JavaScript can build. Runs in CI. It caught the page rendering nothing at all, twice, while every unit test stayed green |
 | CI with `SLATE_REQUIRE_FULL_SUITE=1` | The nine FFmpeg proofs skip themselves without FFmpeg. In CI a skip is a failure, so a broken install cannot leave the badge green over proofs that never ran |
 
+## The one demonstration that carries the impact claim
+
+Press **"Prove it: a miss with zero failures."** It creates eight heavy renditions with a fifty
+second window and no injected fault, encodes them in waves with real FFmpeg, and every one
+passes. By the third wave there is more measured work left than window, and the deterministic
+gate opens.
+
+Then read the detector comparison underneath it. On that same run: `any_failure` is silent,
+`deadline_passed` is silent, and `slate_gate` fired roughly twenty seconds before the date.
+
+That is the whole argument for the product, and none of it is projected — the per-rendition cost
+is the p95 those encodes just measured. `tests/test_baseline.py` pins both disagreements, and the
+summary states plainly what is *not* claimed: SLATE does not beat a failure alert to a hard
+failure, because nothing does.
+
 ## Driving it with something that is not ours
 
 | Try this | Why it answers the "canned demo" objection |

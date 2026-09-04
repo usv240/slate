@@ -112,3 +112,43 @@ def test_deterministic_failures_are_not_retried(tmp_path: Path):
         pytest.skip("ffmpeg is not installed")
     result = runner.run(make_record("wrong_codec"))
     assert result.jobs[0].retries == 0
+
+
+def test_batching_leaves_real_pending_work_with_nothing_failed(tmp_path: Path):
+    """The invisible-miss case has to be reachable from real runs, not fabricated.
+
+    A facility works a delivery queue in waves. Encoding two of eight renditions
+    leaves six genuinely outstanding, every one of them passing, which is exactly
+    the state a failure-watching alert cannot see.
+    """
+
+    try:
+        runner = PipelineRunner(tmp_path)
+    except RuntimeError:
+        pytest.skip("ffmpeg is not installed")
+    record = make_record()
+    record.specs = [
+        RenditionSpec(name=f"r{i}", width=320, height=180, video_bitrate_kbps=300) for i in range(6)
+    ]
+    record.pending_specs = 6
+
+    result = runner.run(record, limit=2)
+    assert [job.status for job in result.jobs] == ["passed", "passed"]
+    assert result.pending_specs == 4, "un-encoded renditions are still outstanding work"
+    assert result.package_complete is False
+    assert result.p95_seconds_per_spec > 0
+
+    result = runner.run(result, limit=2)
+    assert len(result.jobs) == 4
+    assert result.pending_specs == 2
+    assert all(job.status == "passed" for job in result.jobs)
+
+
+def test_a_completed_queue_reports_no_outstanding_work(tmp_path: Path):
+    try:
+        runner = PipelineRunner(tmp_path)
+    except RuntimeError:
+        pytest.skip("ffmpeg is not installed")
+    result = runner.run(make_record())
+    assert result.pending_specs == 0
+    assert result.package_complete is True

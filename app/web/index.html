@@ -80,6 +80,23 @@
     .allow{font-size:.78rem;color:var(--muted);margin-top:10px}
     @media(max-width:980px){.console{grid-template-columns:1fr}}
 
+    /* detector comparison */
+    .cmp{background:var(--panel);border:1px solid var(--line);padding:16px 18px;margin-bottom:12px;border-left:4px solid var(--line)}
+    .cmp.invisible_miss{border-left-color:var(--bad)}
+    .cmp.cried_wolf{border-left-color:var(--warn)}
+    .cmp.agreed_at_risk{border-left-color:var(--bad)}
+    .cmp.agreed_healthy{border-left-color:var(--ok)}
+    .cmp h4{margin:0 0 3px;font-size:1rem}
+    .cmp .kind{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+    .cmp .why{font-size:.82rem;color:var(--muted);line-height:1.5;margin:8px 0 10px}
+    .dets{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px}
+    .det{border:1px solid var(--line);padding:9px 11px;border-radius:3px}
+    .det .dn{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.74rem;font-weight:700}
+    .det .dv{font-size:.8rem;font-weight:800;margin-top:3px}
+    .det .dv.yes{color:var(--bad)} .det .dv.no{color:var(--muted)}
+    .det .db{font-size:.72rem;color:var(--muted);margin-top:3px;line-height:1.4}
+    .cmpnote{font-size:.8rem;color:var(--muted);line-height:1.55;max-width:80ch}
+
     /* partner integration surface */
     .cover{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin-bottom:14px}
     .cover div{background:var(--panel);padding:14px 16px}
@@ -362,6 +379,19 @@
     <p class="quiet plain">Grafana draws the schedule-budget panel, the official MCP server carries the PNG back, and Gemini reads the picture. The reading is commentary on a chart, never a verdict.</p>
     <p class="quiet technical">Tool <code>get_panel_image</code> renders dashboard <code>slate-delivery-slo</code> panel 2; the PNG is passed to Gemini on Vertex as an inline image part. <code>decision_source</code> stays <code>deterministic_gate</code>.</p>
     <div id="panelOut"></div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div><div class="eyebrow">Why this is not just monitoring</div><h2>What a failure alert cannot see.</h2></div>
+      <div class="keyrow" style="margin:0">
+        <button class="primary" id="missProof" type="button">Prove it: a miss with zero failures</button>
+        <button class="secondary" id="cmpRun" type="button">Compare the detectors</button>
+      </div>
+    </div>
+    <p class="quiet plain">A delivery can be going to miss its contractual date while nothing has failed at all. An alert that watches for failures is silent for that, right up to the deadline. Every delivery on this board is put through three detectors below, on the same measured data.</p>
+    <p class="quiet technical">Each verdict is computed from that delivery's measured p95, its real job results and its real burn observations. Nothing is projected. <code>/v1/evaluation/detectors</code></p>
+    <div id="cmpOut"></div>
   </section>
 
   <section>
@@ -766,6 +796,101 @@ async function approve(id,action,b){
     await load();
   }finally{b.disabled=false;b.textContent='Approve'}
 }
+
+/* ---------- detector comparison ---------- */
+const KIND_LABEL={
+  invisible_miss:'Invisible miss',
+  cried_wolf:'Cried wolf',
+  agreed_at_risk:'Both fire',
+  agreed_healthy:'Both quiet'
+};
+async function loadComparison(){
+  const out=$('#cmpOut');
+  out.replaceChildren(mkel('div','Measuring...','empty'));
+  try{
+    const d=(await (await fetch('/v1/evaluation/detectors')).json()).data;
+    out.replaceChildren();
+    if(!d.comparisons.length){
+      out.append(mkel('div','No deliveries on the board yet. Load a preset above, then compare.','empty'));
+      return;
+    }
+    const s=d.summary;
+    const head=mkel('div',undefined,'cover');
+    [[s.invisible_miss,'misses a failure alert cannot see'],
+     [s.cried_wolf,'failures that will not cost the date'],
+     [s.agreed_at_risk,'both detectors agree, at risk'],
+     [s.agreed_healthy,'both detectors agree, on track']
+    ].forEach(([n,label])=>{
+      const cell=mkel('div');
+      cell.append(mkel('b',String(n)));
+      cell.append(mkel('span',label));
+      head.append(cell);
+    });
+    out.append(head);
+    d.comparisons.forEach(c=>{
+      const box=mkel('div',undefined,'cmp '+c.disagreement);
+      box.append(mkel('div',KIND_LABEL[c.disagreement]||c.disagreement,'kind'));
+      box.append(mkel('h4',c.title));
+      box.append(mkel('div',c.why_it_matters,'why'));
+      const grid=mkel('div',undefined,'dets');
+      c.detectors.forEach(det=>{
+        const cell=mkel('div',undefined,'det');
+        cell.append(mkel('div',det.name,'dn'));
+        const lt=det.lead_time_seconds;
+        const label=det.fired
+          ? 'FIRES'+(lt!==null?' · '+fmtDuration(lt)+' before the date':'')
+          : 'silent';
+        cell.append(mkel('div',label,'dv '+(det.fired?'yes':'no')));
+        cell.append(mkel('div',det.basis,'db'));
+        grid.append(cell);
+      });
+      box.append(grid);
+      out.append(box);
+    });
+    const note=mkel('div',undefined,'cmp');
+    note.append(mkel('div','What this does and does not show','kind'));
+    note.append(mkel('div',s.claim,'cmpnote'));
+    note.append(mkel('div',s.not_claimed,'cmpnote'));
+    out.append(note);
+  }catch(e){
+    out.replaceChildren(mkel('div','Comparison unavailable: '+e.message,'empty'));
+  }
+}
+$('#cmpRun').onclick=loadComparison;
+loadComparison();
+
+/* Create a real delivery that will miss its date without anything failing, and
+   let the three detectors disagree about it on camera. Eight heavy renditions at
+   a measured five seconds each is forty seconds of work; the window is fifty. */
+$('#missProof').onclick=async()=>{
+  const b=$('#missProof'), out=$('#cmpOut');
+  b.disabled=true;
+  const say=t=>out.replaceChildren(mkel('div',t,'empty'));
+  try{
+    say('Creating a delivery with eight heavy renditions, a fifty second window, and no injected fault...');
+    const specs=[];
+    for(let i=0;i<8;i++)specs.push({name:'uhd'+i,width:1920,height:1080,video_codec:'libx265',video_bitrate_kbps:12000});
+    const created=await (await fetch('/v1/deliveries',{method:'POST',headers:{'content-type':'application/json'},
+      body:JSON.stringify({title:'Aurora Line S2 - HDR delivery ladder',
+        contractual_date:new Date(Date.now()+50000).toISOString(),
+        penalty_tier:'premiere',fault_mode:'none',specs})})).json();
+    const id=created.data.delivery_id;
+    for(let wave=1;wave<=3;wave++){
+      say('Encoding wave '+wave+' of 3 with real FFmpeg. Every rendition passes; watch the work outrun the window...');
+      const r=await (await fetch('/v1/deliveries/'+id+'/run?batch=1',{method:'POST'})).json();
+      const j=r.jeopardy, d=r.data;
+      const failures=d.jobs.filter(x=>x.status==='failed').length;
+      say('Wave '+wave+': '+d.jobs.length+' encoded, '+failures+' failures, '+d.pending_specs+
+          ' still to do. Work left '+fmtDuration(j.work_remaining_seconds)+
+          ', window left '+fmtDuration(j.delivery_window_seconds)+' - '+j.verdict.toUpperCase());
+      if(wave<3)await pause(6000);
+    }
+    await load();
+    await loadComparison();
+    $('#cmpOut').scrollIntoView({behavior:'smooth',block:'start'});
+  }catch(e){ say('Proof failed: '+e.message); }
+  finally{ b.disabled=false; }
+};
 
 /* ---------- partner integration surface ---------- */
 async function loadMcpCoverage(){

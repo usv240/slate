@@ -44,6 +44,7 @@ from .models import (
     RemediationApproval,
 )
 from .report import render_report
+from .baseline import compare as compare_detectors, summarise as summarise_detectors
 from .pipeline import PipelineRunner
 from .presets import BY_ID, catalogue
 from .store import DeliveryStore
@@ -696,13 +697,19 @@ def list_deliveries() -> dict[str, object]:
 
 
 @app.post("/v1/deliveries/{delivery_id}/run")
-def run_delivery(delivery_id: str) -> dict[str, object]:
+def run_delivery(delivery_id: str, batch: int | None = None) -> dict[str, object]:
+    """Encode outstanding renditions. `batch` works the queue in waves."""
+
     record = store.get(delivery_id)
     if not record:
         raise HTTPException(404, detail={"code": "delivery_not_found", "message": "Unknown delivery."})
+    if batch is not None and batch < 1:
+        raise HTTPException(
+            422, detail={"code": "invalid_batch", "message": "batch must be 1 or more."}
+        )
     previous_status = record.status
     try:
-        record = PipelineRunner().run(record)
+        record = PipelineRunner().run(record, limit=batch)
     except RuntimeError as exc:
         raise HTTPException(503, detail={"code": "pipeline_unavailable", "message": str(exc)}) from exc
     pipeline_status = record.status
@@ -729,6 +736,27 @@ def run_delivery(delivery_id: str) -> dict[str, object]:
     return {
         "data": record.model_dump(mode="json"),
         "jeopardy": gate.model_dump(mode="json"),
+    }
+
+
+@app.get("/v1/evaluation/detectors")
+def detector_comparison() -> dict[str, object]:
+    """What an ordinary failure alert would have said, on this same real data.
+
+    Every delivery currently on the board is run through three detectors and the
+    disagreements are named. Nothing is projected: each verdict comes from that
+    delivery's measured p95, its real job results and its real burn history.
+    """
+
+    now = datetime.now(timezone.utc)
+    comparisons = [compare_detectors(record, now) for record in store.list()]
+    return {
+        "data": {
+            "measured_at": now.isoformat(),
+            "basis": "live deliveries on this deployment, from real FFmpeg runs",
+            "comparisons": comparisons,
+            "summary": summarise_detectors(comparisons),
+        }
     }
 
 

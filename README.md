@@ -45,6 +45,36 @@ is refused on purpose so the operator's view is not something the model can rewr
 
 The agents' own OpenTelemetry `gen_ai.*` token, latency and MCP-tool series are read back through the same MCP server at `/v1/integrations/grafana/ai-observability`. These are the conventions Grafana Cloud AI Observability consumes; that Cloud product is not configured here and nothing depends on it.
 
+## What a failure alert cannot see
+
+This is the claim, and it is measured rather than argued. Eight heavy renditions at a measured
+five seconds each is forty seconds of work. Give the delivery a fifty second window and encode
+it in waves, with **no fault injected at all**:
+
+| | wave 1 | wave 2 | wave 3 |
+|---|---|---|---|
+| failures | 0 | 0 | 0 |
+| still to encode | 7 | 6 | 5 |
+| measured work left | 34.8s | 33.8s | 28.1s |
+| window left | 43.3s | 31.1s | 19.9s |
+| verdict | healthy | healthy | **at_risk** |
+
+Every rendition passed. On that same run, `/v1/evaluation/detectors` reports:
+
+- `any_failure` — **silent**. Nothing failed, so it has nothing to say, and it will stay silent
+  until the date goes by.
+- `deadline_passed` — **silent**. Correct, and useless.
+- `slate_gate` — **fires, 19.7 seconds before the contractual date.**
+
+The button on the page runs exactly that, live, in about thirty seconds.
+
+What this does *not* show, and the page says so: SLATE does not beat a failure alert to a hard
+failure. A failure is instant and nothing beats it. It shows the failure alert is answering a
+different question — and that a delivery can be lost without anything failing.
+
+The converse is checked too. A rendition that fails with two days of slack is a `cried_wolf`
+case: the ordinary alert fires, SLATE stays quiet, because the date is not at risk.
+
 ## Not a fixed demo path
 
 Three things a judge can drive that are not our fixtures:

@@ -56,6 +56,24 @@ outstanding."
 
 "Third window. All three true. Now it opens."
 
+## NEW BEAT — insert at 1:05, trim the closing if needed
+
+> *Scroll to "What a failure alert cannot see". Press **Prove it: a miss with zero failures**.*
+
+"One more, and it is the one that matters. Eight renditions, a fifty second window, and I am
+injecting no fault at all. Every encode is going to pass."
+
+> *Let the three waves run. Point at the failure count staying zero.*
+
+"Zero failures. But the work left just went past the window left. Now look at what each detector
+says about this same run: a failure alert is silent, because nothing failed. It stays silent
+until the date goes by. SLATE fired twenty seconds before it."
+
+> *Point at the `not_claimed` line.*
+
+"And it says what it does not claim: on a hard failure, a failure alert wins. It is answering a
+different question."
+
 ## 1:05–1:30 — The part we had to fix
 
 > *Investigation renders. Point at the Diagnose block, at the quoted stderr.*

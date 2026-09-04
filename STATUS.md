@@ -1,6 +1,6 @@
 # SLATE implementation status
 
-Updated: 2026-09-04. Live revision `slate-delivery-slo-00034-tx8`, `min-instances 1`.
+Updated: 2026-09-04. Live revision `slate-delivery-slo-00037`, `min-instances 1`.
 
 ## Complete
 
@@ -74,6 +74,16 @@ Updated: 2026-09-04. Live revision `slate-delivery-slo-00034-tx8`, `min-instance
       for human review — the one capability named in the track requirement that was missing
 - [x] Published tool inventory: the server advertises 72 tools, SLATE calls seven with a stated
       reason each, and the declines are listed with why rather than being silently absent
+
+- [x] **The impact claim is now demonstrated, not projected.** `/v1/evaluation/detectors` runs
+      every live delivery through three detectors — an ordinary failure alert, a deadline check,
+      and the gate — and names the disagreements. Verified live: eight renditions, zero failures,
+      and the gate opened 19.7s before the contractual date while the failure alert stayed silent
+- [x] Batched encoding (`?batch=N`) so a delivery queue is worked in waves, which is how a
+      facility actually runs and the only honest way to reach that case
+- [x] One-click "a miss with zero failures" proof on the page, about thirty seconds of real FFmpeg
+- [x] The converse pinned too: a failure with two days of slack is a `cried_wolf` case where the
+      ordinary alert fires and SLATE stays quiet
 
 ## Release tasks
 
