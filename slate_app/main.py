@@ -24,9 +24,12 @@ from .gate import evaluate_jeopardy
 from .grafana_mcp import (
     GrafanaMcp,
     GrafanaNotConfigured,
+    TOOLS_DECLINED,
+    TOOLS_USED,
     create_delivery_alert_rule,
     delete_alert_rule,
     get_panel_image,
+    search_dashboards,
     query_loki,
     query_prometheus,
     query_tempo,
@@ -146,9 +149,22 @@ async def grafana_evidence() -> dict[str, object]:
         )
     except GrafanaNotConfigured as exc:
         raise HTTPException(503, detail={"code": "grafana_mcp_not_configured", "message": str(exc)}) from exc
+
+    def advertised(name: str) -> bool:
+        return name in tools or any(candidate.endswith(name) for candidate in tools)
+
     return {
         "data": {
             "transport": "official_mcp_grafana_stdio",
+            "advertised_tool_count": len(tools),
+            # What we call, why, and whether this server actually offers it.
+            "tools_used": {
+                name: {"advertised": advertised(name), "for": why}
+                for name, why in TOOLS_USED.items()
+            },
+            # Named in the track requirement but deliberately not used, with the
+            # reason. A capability we skipped should be visible, not absent.
+            "tools_declined": TOOLS_DECLINED,
             "required_tools_advertised": {
                 name: name in tools
                 for name in ("query_prometheus", "query_loki_logs", "create_annotation")
@@ -158,6 +174,68 @@ async def grafana_evidence() -> dict[str, object]:
             ],
             "prometheus": prometheus,
             "loki": loki,
+        }
+    }
+
+
+@app.get("/v1/integrations/grafana/dashboards")
+async def grafana_dashboards(query: str = "slate") -> dict[str, object]:
+    """Search dashboards through MCP and hand a human links back to Grafana.
+
+    The track requirement names dashboard search explicitly, and it is the one
+    capability here whose whole point is to end at a person: the agent finds the
+    view an operator already trusts and links to it rather than paraphrasing it.
+    """
+
+    try:
+        result = await search_dashboards(query)
+    except GrafanaNotConfigured as exc:
+        raise HTTPException(
+            503, detail={"code": "grafana_mcp_not_configured", "message": str(exc)}
+        ) from exc
+
+    base = os.getenv("GRAFANA_URL", "").rstrip("/")
+    found: list[dict[str, object]] = []
+    for item in result.get("content", []):
+        text = item.get("text") if isinstance(item, dict) else None
+        if not text:
+            continue
+        try:
+            payload = json.loads(text)
+        except (TypeError, ValueError):
+            continue
+        if isinstance(payload, list):
+            rows = payload
+        else:
+            # mcp-grafana returns {"dashboards": [...], "total": n}; accept the
+            # other shapes rather than depending on one server version.
+            rows = next(
+                (payload[key] for key in ("dashboards", "results", "data") if isinstance(payload.get(key), list)),
+                [],
+            )
+        for row in rows if isinstance(rows, list) else []:
+            if not isinstance(row, dict):
+                continue
+            uid = row.get("uid")
+            found.append(
+                {
+                    "uid": uid,
+                    "title": row.get("title"),
+                    "folder": row.get("folderTitle") or row.get("folder_title"),
+                    # The link is the deliverable: a human opens Grafana, not a summary of it.
+                    "url": f"{base}{row['url']}" if base and row.get("url") else None,
+                }
+            )
+    return {
+        "data": {
+            "transport": "official_mcp_grafana_stdio",
+            "tool": result["tool"],
+            "query": query,
+            "is_error": result["is_error"],
+            "dashboards": found,
+            # The server's own response, unedited, like every other MCP surface here.
+            "content": result["content"],
+            "note": "Links are for human review. Nothing here changes a dashboard.",
         }
     }
 

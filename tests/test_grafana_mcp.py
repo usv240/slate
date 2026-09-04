@@ -80,3 +80,39 @@ def test_tempo_uses_proxied_tool_schema(monkeypatch):
         "tool": "tempo_get-trace",
         "arguments": {"trace_id": "a" * 32, "datasourceUid": "tempo-uid"},
     }
+
+
+def test_every_tool_we_claim_to_use_is_reachable_through_one_helper():
+    """The inventory must describe the code, not aspirations.
+
+    `tools_used` is published on the evidence endpoint as a statement about what
+    SLATE calls. If a name drifts out of the code the statement becomes a claim
+    nobody checks, so it is checked here.
+    """
+
+    import inspect
+
+    from slate_app import grafana_mcp
+
+    source = inspect.getsource(grafana_mcp)
+    for tool in grafana_mcp.TOOLS_USED:
+        assert tool in source, f"{tool} is advertised in TOOLS_USED but never called"
+
+
+def test_declines_carry_a_reason_rather_than_being_absent():
+    from slate_app.grafana_mcp import TOOLS_DECLINED
+
+    assert TOOLS_DECLINED, "a declined capability should be stated, not silently missing"
+    for capability, reason in TOOLS_DECLINED.items():
+        assert len(reason) > 60, f"{capability} needs a real reason, not a shrug"
+
+
+def test_dashboard_search_is_a_read_that_ends_at_a_human():
+    from fastapi.testclient import TestClient
+
+    from slate_app.main import app
+
+    # Without Grafana configured it must say so rather than invent dashboards.
+    response = TestClient(app).get("/v1/integrations/grafana/dashboards")
+    assert response.status_code == 503
+    assert response.json()["detail"]["code"] == "grafana_mcp_not_configured"

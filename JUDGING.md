@@ -73,6 +73,8 @@ class must be recovered from what FFmpeg actually printed.
 | The gate is computed, not asserted | `slate_app/gate.py` is a pure function; `/v1/jeopardy/{id}` returns `gate.passed` and `gate.failed` with observed values and required thresholds |
 | One blip cannot open an incident | `tests/test_gate.py`; and the judge proof visibly stays healthy for two windows |
 | The model cannot act | Remediate has `output_schema` and no tools; the approval endpoint returns **409** for any action the agent did not propose |
+| Breadth of partner use is stated, not implied | `/v1/integrations/grafana/evidence` reports the server's advertised tool count (72), the seven tools SLATE calls with a reason each, and the capabilities it declines with why |
+| Dashboard search ends at a person | `/v1/integrations/grafana/dashboards` searches through MCP and returns a link back to Grafana rather than paraphrasing the view |
 | The agent really used MCP | `/v1/integrations/grafana/evidence` lists advertised tools and runs a live query; every tool call is a span and a Prometheus counter |
 | MCP writes are real | The per-delivery alert rule is readable at `/api/v1/provisioning/alert-rules/{uid}` on the Grafana stack; annotations appear on the dashboard |
 | The agent's own cost is observable | `/v1/integrations/grafana/ai-observability` reads the `gen_ai.*` token, latency and MCP-tool series back through the same MCP server |

@@ -237,6 +237,45 @@ async def delete_alert_rule(rule_uid: str) -> dict[str, Any]:
     return await GrafanaMcp().call("alerting_manage_rules", {"operation": "delete", "rule_uid": rule_uid})
 
 
+#: Every tool SLATE calls, with why. Anything the server advertises that is not
+#: here is a deliberate decline, reported by the evidence endpoint rather than
+#: quietly absent.
+TOOLS_USED: dict[str, str] = {
+    "query_prometheus": "schedule budget, queue depth and failure counts for the agents and the health probe",
+    "query_loki_logs": "the real FFmpeg stderr behind a failure class",
+    "tempo_get-trace": "the per-delivery span tree, ingest through simulated delivery",
+    "search_dashboards": "find the operator's dashboard and hand a human a link back to Grafana",
+    "alerting_manage_rules": "provision and remove a Grafana-managed alert rule per delivery",
+    "create_annotation": "record an approved remediation on the timeline, after human approval",
+    "get_panel_image": "render the schedule-budget panel so Gemini can read the chart",
+}
+
+#: Capabilities the requirement text names that SLATE does not use, and why.
+TOOLS_DECLINED: dict[str, str] = {
+    "incidents (create_incident, list_incidents, add_activity_to_incident)": (
+        "Grafana IRM is a Grafana Cloud plugin. This stack is self-hosted OSS, which the rules "
+        "permit for unattended deployments, so these tools are not available here. Opening an "
+        "incident would be the right next step on a Cloud stack."
+    ),
+    "OnCall (list_oncall_schedules, get_current_oncall_users)": (
+        "Also a Grafana Cloud plugin, and there is no real rota behind this deployment to report."
+    ),
+    "Sift (list_sift_investigations, get_sift_investigation)": (
+        "Grafana Cloud only. SLATE's investigation is its own three-agent workflow over MCP evidence."
+    ),
+    "update_dashboard": (
+        "The dashboard is provisioned from a file in this repository. Letting the agent rewrite it "
+        "at runtime would make the operator's view something the model could change."
+    ),
+}
+
+
+async def search_dashboards(query: str = "slate") -> dict[str, Any]:
+    """Find dashboards through MCP so a human can be handed a link back to Grafana."""
+
+    return await GrafanaMcp().call("search_dashboards", {"query": query})
+
+
 async def get_panel_image(panel_id: int, *, hours: int = 6) -> dict[str, Any]:
     """Render a dashboard panel to PNG through MCP so Gemini can read the chart.
 

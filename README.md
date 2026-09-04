@@ -32,9 +32,16 @@ Gemini corroborates both decisions against raw evidence and proposes bounded opt
 | Metrics | `query_prometheus` | Agent evidence, health probe, AI-observability read-back |
 | Logs | `query_loki_logs` | Agent evidence — the real FFmpeg stderr |
 | Traces | `tempo_get-trace` | Agent evidence, per-delivery span tree |
+| **Dashboard search** | `search_dashboards` | `/v1/integrations/grafana/dashboards` finds the operator's dashboard and returns a link back to Grafana for human review |
 | **Alert rule write** | `alerting_manage_rules` | A Grafana-managed rule provisioned per delivery at creation |
 | **Annotation write** | `create_annotation` | After, and only after, a human approves a remediation |
 | **Panel render** | `get_panel_image` | Grafana draws the schedule-budget panel, MCP carries the PNG, Gemini reads the chart multimodally at `/v1/integrations/grafana/panel-reading` |
+
+This server advertises **72 tools**; SLATE calls seven. `/v1/integrations/grafana/evidence`
+lists each one with what it is for and confirms the server offers it, alongside the capabilities
+named in the track requirement that SLATE **declines** and why — Grafana IRM incidents, OnCall
+and Sift are Grafana Cloud plugins unavailable on a self-hosted OSS stack, and `update_dashboard`
+is refused on purpose so the operator's view is not something the model can rewrite.
 
 The agents' own OpenTelemetry `gen_ai.*` token, latency and MCP-tool series are read back through the same MCP server at `/v1/integrations/grafana/ai-observability`. These are the conventions Grafana Cloud AI Observability consumes; that Cloud product is not configured here and nothing depends on it.
 

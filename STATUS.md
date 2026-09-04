@@ -1,6 +1,6 @@
 # SLATE implementation status
 
-Updated: 2026-09-04. Live revision `slate-delivery-slo-00031-g9n`, `min-instances 1`.
+Updated: 2026-09-04. Live revision `slate-delivery-slo-00034-tx8`, `min-instances 1`.
 
 ## Complete
 
@@ -70,6 +70,11 @@ Updated: 2026-09-04. Live revision `slate-delivery-slo-00031-g9n`, `min-instance
 - [x] `scripts/seed_board.py` resets the board to three healthy titles with fresh contractual
       dates, because absolute dates go stale between a seeding and a recording
 
+- [x] **Dashboard search through MCP** (`search_dashboards`), returning links back to Grafana
+      for human review — the one capability named in the track requirement that was missing
+- [x] Published tool inventory: the server advertises 72 tools, SLATE calls seven with a stated
+      reason each, and the declines are listed with why rather than being silently absent
+
 ## Release tasks
 
 - [ ] Record and publish the under-three-minute demo — script in `docs/DEMO-SCRIPT.md`
@@ -81,7 +86,11 @@ Updated: 2026-09-04. Live revision `slate-delivery-slo-00031-g9n`, `min-instance
 
 - **Capacity starvation** as a failure class. It would need a real worker pool under
   contention; classifying it without one would be the same fiction this build just removed.
-- **Grafana Cloud features** — the SLO app, IRM, Sift, OnCall. The stack is self-hosted OSS,
-  which the rules permit for unattended deployments, so those are unavailable and unused.
+- **Grafana Cloud features** — the SLO app, IRM incidents, Sift, OnCall. The stack is
+  self-hosted OSS, which the rules permit for unattended deployments, so those tools are not
+  advertised by this server. Opening an incident would be the right next step on a Cloud stack.
+- **`update_dashboard`.** Advertised and deliberately unused: the dashboard is provisioned from
+  a file in this repository, and letting the agent rewrite it at runtime would make the
+  operator's view something the model could change.
 - **A score for Gemini's corroboration quality.** Assessed by inspection of deployed runs
   rather than reduced to a number this build could not defend.
