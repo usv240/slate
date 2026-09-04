@@ -80,6 +80,27 @@
     .allow{font-size:.78rem;color:var(--muted);margin-top:10px}
     @media(max-width:980px){.console{grid-template-columns:1fr}}
 
+    /* presets + custom builder */
+    .presets{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-bottom:12px}
+    .preset{background:var(--panel);border:1px solid var(--line);padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+    .preset h4{margin:0;font-size:.95rem;line-height:1.25}
+    .preset .what{font-size:.78rem;color:var(--muted)}
+    .preset .expect{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.71rem;color:var(--ok)}
+    .preset .detail{font-size:.79rem;color:var(--muted);line-height:1.5}
+    .preset .row{display:flex;gap:7px;flex-wrap:wrap;margin-top:auto;padding-top:8px}
+    .preset .row button,.preset .row a{font-size:.8rem;padding:7px 11px}
+    .specrow{display:grid;grid-template-columns:1.2fr .8fr .8fr 1fr .9fr auto;gap:7px;margin-bottom:7px}
+    .specrow input,.specrow select{border:1px solid var(--line);background:var(--paper);padding:8px;font-size:.82rem;min-width:0;width:100%}
+    .specrow button{border:1px solid var(--line);background:transparent;color:var(--bad);padding:0 11px}
+    .buildhead{display:grid;grid-template-columns:1.2fr .8fr .8fr 1fr .9fr auto;gap:7px;margin-bottom:5px}
+    .buildhead span{font-size:.66rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+    .promqlrow{display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:8px}
+    .promqlrow input{border:1px solid var(--line);background:var(--paper);padding:10px;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.79rem;min-width:0}
+    .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+    .chip{border:1px solid var(--line);background:var(--paper);border-radius:99px;padding:4px 10px;font-size:.72rem;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--muted);cursor:pointer}
+    .chip:hover{border-color:var(--ok);color:var(--ok)}
+    @media(max-width:860px){.specrow,.buildhead{grid-template-columns:1fr 1fr}.buildhead{display:none}}
+
     .section-head{display:flex;align-items:end;justify-content:space-between;gap:16px;margin:44px 0 14px;flex-wrap:wrap}
     h2{font-family:Georgia,"Times New Roman",serif;font-size:1.9rem;margin:0}
     .quiet{color:var(--muted);font-size:.88rem}
@@ -283,6 +304,21 @@
       <div><div class="eyebrow">Live control board</div><h2>Every title. One immovable date.</h2></div>
       <span class="quiet" id="updated">Waiting for API</span>
     </div>
+    <div class="presets" id="presets"></div>
+
+    <details class="panel" id="builder" style="margin-bottom:14px">
+      <summary style="cursor:pointer;font-weight:600">Build your own delivery &mdash; these specs drive the real FFmpeg commands</summary>
+      <p class="sub" style="margin-top:10px">Every row below becomes an actual encode. Resolution, codec and bitrate are passed to FFmpeg unchanged, and the QC stage decodes what comes back rather than trusting what was requested.</p>
+      <div class="buildhead">
+        <span>Rendition</span><span>Width</span><span>Height</span><span>Codec</span><span>kb/s</span><span></span>
+      </div>
+      <div id="specRows"></div>
+      <div class="keyrow">
+        <button class="secondary" id="addSpec" type="button">Add a rendition</button>
+        <button class="secondary" id="downloadCustom" type="button">Download this as JSON</button>
+      </div>
+    </details>
+
     <form class="form" id="create">
       <input id="title" value="Public-domain launch package" required aria-label="Title">
       <input id="deadline" type="datetime-local" required aria-label="Contract date">
@@ -309,6 +345,20 @@
     <p class="quiet plain">Grafana draws the schedule-budget panel, the official MCP server carries the PNG back, and Gemini reads the picture. The reading is commentary on a chart, never a verdict.</p>
     <p class="quiet technical">Tool <code>get_panel_image</code> renders dashboard <code>slate-delivery-slo</code> panel 2; the PNG is passed to Gemini on Vertex as an inline image part. <code>decision_source</code> stays <code>deterministic_gate</code>.</p>
     <div id="panelOut"></div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div><div class="eyebrow">Bring your own query</div><h2>The MCP path is general, not three canned calls.</h2></div>
+    </div>
+    <p class="quiet plain">The agents run three fixed queries on purpose &mdash; an agent free to compose any query can also compose a misleading one. That is a limit we put on the agent, not on the integration. Type your own PromQL and it goes through the same official Grafana MCP server.</p>
+    <p class="quiet technical">Posts to <code>/v1/analyze/promql</code>, which calls <code>query_prometheus</code> over the official <code>mcp-grafana</code> stdio transport and returns the server's raw response. Read only.</p>
+    <div class="chips" id="promqlChips"></div>
+    <div class="promqlrow">
+      <input id="promql" value="sum by (failure_class) (slate_job_failures_total)" aria-label="PromQL expression" spellcheck="false">
+      <button class="primary" id="promqlRun" type="button">Run through MCP</button>
+    </div>
+    <pre class="proof" id="promqlOut" hidden aria-live="polite"></pre>
   </section>
 
   <section class="gate">
@@ -688,6 +738,130 @@ async function approve(id,action,b){
   }finally{b.disabled=false;b.textContent='Approve'}
 }
 
+/* ---------- presets ---------- */
+async function loadPresets(){
+  const host=$('#presets');
+  try{
+    const d=(await (await fetch('/v1/presets')).json()).data;
+    host.replaceChildren();
+    d.presets.forEach(p=>{
+      const card=mkel('div',undefined,'preset');
+      card.append(mkel('h4',p.name));
+      card.append(mkel('div',p.demonstrates,'what'));
+      card.append(mkel('div',p.expect,'expect'));
+      card.append(mkel('div',p.detail,'detail'));
+      const row=mkel('div',undefined,'row');
+      const load=mkel('button','Load','primary');
+      load.onclick=()=>loadPreset(p.id,load);
+      const dl=mkel('a','JSON ↓','secondary');
+      dl.href='/v1/presets/'+p.id; dl.setAttribute('download','');
+      dl.style.textDecoration='none'; dl.style.display='inline-block';
+      row.append(load,dl); card.append(row);
+      host.append(card);
+    });
+  }catch(e){ host.replaceChildren(mkel('div','Could not load presets.','empty')); }
+}
+async function loadPreset(id,b){
+  b.disabled=true; const original=b.textContent; b.textContent='Loading…';
+  try{
+    const r=await fetch(`/v1/presets/${id}/load`,{method:'POST'});
+    const data=await r.json();
+    if(!r.ok){showProof('COULD NOT LOAD PRESET',data);return}
+    await load();
+    document.querySelector('#board').scrollIntoView({behavior:'smooth',block:'start'});
+  }finally{b.disabled=false;b.textContent=original}
+}
+
+/* ---------- custom delivery builder ---------- */
+const DEFAULT_SPECS=[
+  {name:'proxy',width:320,height:180,video_codec:'libx264',video_bitrate_kbps:300},
+  {name:'review',width:640,height:360,video_codec:'libx264',video_bitrate_kbps:800}
+];
+function specRow(spec){
+  const row=mkel('div',undefined,'specrow');
+  const mk=(k,type,val,attrs={})=>{
+    const i=document.createElement('input'); i.type=type; i.value=val; i.dataset.k=k;
+    i.setAttribute('aria-label',k); Object.entries(attrs).forEach(([a,v])=>i.setAttribute(a,v));
+    return i;
+  };
+  row.append(mk('name','text',spec.name,{maxlength:40}));
+  row.append(mk('width','number',spec.width,{min:160,max:3840,step:2}));
+  row.append(mk('height','number',spec.height,{min:90,max:2160,step:2}));
+  const sel=document.createElement('select'); sel.dataset.k='video_codec'; sel.setAttribute('aria-label','codec');
+  ['libx264','libx265'].forEach(c=>{const o=document.createElement('option');o.value=c;o.textContent=c;if(c===spec.video_codec)o.selected=true;sel.append(o)});
+  row.append(sel);
+  row.append(mk('video_bitrate_kbps','number',spec.video_bitrate_kbps,{min:100,max:50000,step:100}));
+  const del=mkel('button','×');
+  del.type='button'; del.setAttribute('aria-label','remove this rendition');
+  del.onclick=()=>{ if($('#specRows').children.length>1) row.remove(); };
+  row.append(del);
+  return row;
+}
+function readSpecs(){
+  return [...$('#specRows').children].map(row=>{
+    const spec={};
+    row.querySelectorAll('[data-k]').forEach(el=>{
+      const k=el.dataset.k;
+      spec[k]=(k==='name'||k==='video_codec')?el.value.trim():Number(el.value);
+    });
+    return spec;
+  });
+}
+function currentPayload(){
+  return {
+    title:$('#title').value,
+    contractual_date:new Date(deadline.value).toISOString(),
+    penalty_tier:'priority',
+    fault_mode:$('#fault').value,
+    specs:readSpecs()
+  };
+}
+DEFAULT_SPECS.forEach(sp=>$('#specRows').append(specRow(sp)));
+$('#addSpec').onclick=()=>{
+  const rows=$('#specRows');
+  if(rows.children.length>=8){showProof('SPEC LIMIT','A delivery accepts at most 8 renditions.');return}
+  rows.append(specRow({name:'rendition'+(rows.children.length+1),width:1280,height:720,video_codec:'libx264',video_bitrate_kbps:4000}));
+};
+$('#downloadCustom').onclick=()=>{
+  const blob=new Blob([JSON.stringify(currentPayload(),null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download='slate-custom-delivery.json';
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+};
+
+/* ---------- bring your own PromQL ---------- */
+const PROMQL_EXAMPLES=[
+  'sum by (failure_class) (slate_job_failures_total)',
+  'min(slate_schedule_budget_seconds)',
+  'sum(slate_queue_depth)',
+  'sum by (agent, token_type) (slate_gen_ai_tokens_total)',
+  'sum by (tool, outcome) (slate_mcp_tool_calls_total)',
+  'up{job="slate-cloud-run"}'
+];
+PROMQL_EXAMPLES.forEach(expr=>{
+  const c=mkel('button',expr,'chip'); c.type='button';
+  c.onclick=()=>{$('#promql').value=expr;$('#promqlRun').click()};
+  $('#promqlChips').append(c);
+});
+$('#promqlRun').onclick=async()=>{
+  const b=$('#promqlRun'), out=$('#promqlOut');
+  const expr=$('#promql').value.trim();
+  if(!expr)return;
+  b.disabled=true; b.textContent='Querying…';
+  out.hidden=false; out.textContent='Sending your expression through the official Grafana MCP server…';
+  try{
+    const headers={'content-type':'application/json'};
+    if(JUDGE_KEY)headers['Authorization']='Bearer '+JUDGE_KEY;
+    const r=await fetch('/v1/analyze/promql',{method:'POST',headers,body:JSON.stringify({expr})});
+    const data=await r.json();
+    out.textContent=(r.ok?'YOUR QUERY, THROUGH OFFICIAL GRAFANA MCP':'QUERY REFUSED')+String.fromCharCode(10,10)+JSON.stringify(data,null,2);
+  }catch(e){ out.textContent='Request failed: '+e.message; }
+  finally{ b.disabled=false; b.textContent='Run through MCP'; }
+};
+
+loadPresets();
+
 /* ---------- judge console ---------- */
 const ORIGIN=location.origin;
 async function loadDemo(){
@@ -848,11 +1022,7 @@ $('#proofButton').onclick=async()=>{
 
 $('#create').onsubmit=async e=>{
   e.preventDefault();
-  const payload={title:$('#title').value,contractual_date:new Date(deadline.value).toISOString(),penalty_tier:'priority',fault_mode:$('#fault').value,specs:[
-    {name:'proxy',width:320,height:180,video_codec:'libx264',video_bitrate_kbps:300},
-    {name:'review',width:640,height:360,video_codec:'libx264',video_bitrate_kbps:800}
-  ]};
-  const r=await fetch('/v1/deliveries',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
+  const r=await fetch('/v1/deliveries',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(currentPayload())});
   if(!r.ok)showProof('COULD NOT CREATE DELIVERY',await r.json());
   else await load();
 };

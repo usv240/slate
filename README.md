@@ -38,9 +38,31 @@ Gemini corroborates both decisions against raw evidence and proposes bounded opt
 
 The agents' own OpenTelemetry `gen_ai.*` token, latency and MCP-tool series are read back through the same MCP server at `/v1/integrations/grafana/ai-observability`. These are the conventions Grafana Cloud AI Observability consumes; that Cloud product is not configured here and nothing depends on it.
 
+## Not a fixed demo path
+
+Three things a judge can drive that are not our fixtures:
+
+- **Named preset scenarios** at `/v1/presets` — a healthy four-rendition ladder, a festival cut
+  whose encoder is missing, and a distributor tightening the QC spec mid-delivery. Each one
+  loads in a click, downloads as JSON, and is *exactly* the body `POST /v1/deliveries` accepts.
+  A test asserts that: the downloaded file posted back unchanged creates the same record, so a
+  preset is not a privileged path.
+- **Your own delivery ladder.** The rendition rows on the page are not decoration — resolution,
+  codec and bitrate are passed to FFmpeg unchanged, and the QC stage decodes what actually came
+  back rather than trusting what was requested. Out-of-range specs are refused with a 422, not
+  silently clamped.
+- **Your own PromQL** at `/v1/analyze/promql`, run through the same official Grafana MCP server
+  the agents use, returning the server's raw response. The agents run three fixed queries on
+  purpose — an agent free to compose any query can also compose a misleading one — and that is a
+  limit on the agent, not on the integration.
+
 ## Verified baseline
 
-- `47 passed, 9 skipped` locally; the nine are FFmpeg-dependent and run in CI, which installs FFmpeg. The deployed container includes FFmpeg.
+- `70 passed, 9 skipped` locally; the nine are FFmpeg-dependent and run in CI, which installs FFmpeg. The deployed container includes FFmpeg.
+- `scripts/check_page.py` loads the page in a headless browser and asserts the DOM only
+  JavaScript can build. It has caught a page-dead defect twice that no unit test would have.
+- `scripts/seed_board.py` resets the board to three healthy titles with fresh contractual dates.
+  Absolute dates go stale; run it before recording or before a judging window.
 - Five-scenario classifier evaluation against ground truth the classifier cannot see, including a healthy control that a label-everything classifier would fail.
 - Hosted Cloud Run acceptance: real transcode, package, and simulated delivery.
 - Constructed schedule-history fixtures prove one blip does not open an incident and a sustained burn does.

@@ -12,6 +12,12 @@ Hard limit is 3:00; only the first 3:00 is evaluated.
 
 **Setup before you hit record**
 
+- `python scripts/seed_board.py` — contractual dates are absolute, so a board seeded days ago
+  shows expired contracts. This resets it to three healthy titles with fresh windows and runs
+  each once so the metrics are live.
+- `python scripts/check_page.py` — confirms the page actually initialises. It has caught the
+  page rendering nothing twice.
+
 - Browser at 1440×900, zoom 100%, signed out, no extensions visible.
 - The board should already show the three seeded titles, all green.
 - Second tab: the Grafana control tower, already loaded.

@@ -32,6 +32,9 @@ KEY_TTL_SECONDS = 14 * 24 * 3600
 #: requests per window, per caller, for the endpoints that spend tokens
 ANONYMOUS_QUOTA = 4
 KEYED_QUOTA = 20
+#: PromQL is a cheap read against our own Prometheus, so it gets a wider bucket
+#: than the endpoints that spend Gemini tokens.
+PROMQL_QUOTA = 30
 WINDOW_SECONDS = 600
 
 
@@ -150,9 +153,13 @@ class RateLimiter:
 limiter = RateLimiter()
 
 
-def evaluate(*, authorization: str | None, client_ip: str) -> Decision:
+def evaluate(
+    *, authorization: str | None, client_ip: str, quota_override: int | None = None
+) -> Decision:
     claims = verify_key(bearer_token(authorization))
     if claims:
-        quota = int(claims.get("quota", KEYED_QUOTA))
-        return limiter.check(f"key:{bearer_token(authorization)}", quota=quota, keyed=True)
-    return limiter.check(f"ip:{client_ip}", quota=ANONYMOUS_QUOTA, keyed=False)
+        quota = quota_override or int(claims.get("quota", KEYED_QUOTA))
+        token = bearer_token(authorization)
+        return limiter.check(f"key:{client_ip}:{token}", quota=quota, keyed=True)
+    quota = quota_override or ANONYMOUS_QUOTA
+    return limiter.check(f"ip:{client_ip}", quota=quota, keyed=False)

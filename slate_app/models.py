@@ -132,5 +132,17 @@ class RemediationApproval(BaseModel):
     approved: bool
 
 
+class PromQlRequest(BaseModel):
+    """A caller's own PromQL, bounded so it cannot become an attack surface."""
+
+    expr: str = Field(min_length=1, max_length=600)
+
+    @model_validator(mode="after")
+    def single_expression(self) -> "PromQlRequest":
+        if any(character in self.expr for character in (chr(10), chr(13))):
+            raise ValueError("expr must be a single line")
+        return self
+
+
 class InvestigationRequest(BaseModel):
     operator_id: str = Field(min_length=2, max_length=120)

@@ -146,3 +146,90 @@ def test_a_published_video_becomes_a_privacy_preserving_embed(monkeypatch, url, 
     assert data["published"] is True
     assert data["embed_url"] == expected
     assert data["watch_url"] == url
+
+
+def test_presets_are_exactly_what_the_create_endpoint_accepts():
+    """A preset must not be a privileged demo path.
+
+    If loading a preset went through different code than a normal create, the
+    presets would prove nothing about the product a judge can actually drive.
+    """
+
+    from slate_app.models import CreateDelivery
+    from slate_app.presets import PRESETS
+
+    client = TestClient(app)
+    listed = client.get("/v1/presets").json()["data"]["presets"]
+    assert len(listed) == len(PRESETS) >= 3
+
+    for preset in listed:
+        # The advertised body validates against the real request model...
+        CreateDelivery.model_validate(preset["body"])
+        # ...and the create endpoint accepts it unchanged.
+        created = client.post("/v1/deliveries", json=preset["body"])
+        assert created.status_code == 201, created.text
+        record = created.json()["data"]
+        assert record["title"] == preset["body"]["title"]
+        assert len(record["specs"]) == preset["spec_count"]
+
+
+def test_a_preset_downloads_as_an_editable_file():
+    response = TestClient(app).get("/v1/presets/festival-encoder")
+    assert response.status_code == 200
+    assert "attachment" in response.headers["content-disposition"]
+    body = response.json()
+    assert body["fault_mode"] == "wrong_codec"
+    assert body["specs"], "a downloaded preset must carry its renditions"
+
+
+def test_an_unknown_preset_says_which_ones_exist():
+    response = TestClient(app).get("/v1/presets/does-not-exist")
+    assert response.status_code == 404
+    assert response.json()["detail"]["known"]
+
+
+def test_a_custom_spec_ladder_is_accepted_and_drives_real_renditions():
+    """The specs a judge types are the specs the pipeline runs."""
+
+    from datetime import datetime, timedelta, timezone
+
+    payload = {
+        "title": "Judge's own ladder",
+        "contractual_date": (datetime.now(timezone.utc) + timedelta(hours=8)).isoformat(),
+        "specs": [
+            {"name": "uhd", "width": 3840, "height": 2160, "video_codec": "libx265", "video_bitrate_kbps": 20000},
+            {"name": "social", "width": 720, "height": 1280, "video_codec": "libx264", "video_bitrate_kbps": 2500},
+        ],
+    }
+    record = TestClient(app).post("/v1/deliveries", json=payload).json()["data"]
+    assert [s["name"] for s in record["specs"]] == ["uhd", "social"]
+    assert record["specs"][0]["video_codec"] == "libx265"
+    assert record["pending_specs"] == 2
+
+
+def test_out_of_range_specs_are_refused_rather_than_silently_clamped():
+    from datetime import datetime, timedelta, timezone
+
+    payload = {
+        "title": "Impossible ladder",
+        "contractual_date": (datetime.now(timezone.utc) + timedelta(hours=8)).isoformat(),
+        "specs": [{"name": "huge", "width": 99999, "height": 2160, "video_bitrate_kbps": 800}],
+    }
+    assert TestClient(app).post("/v1/deliveries", json=payload).status_code == 422
+
+
+def test_promql_must_be_a_single_bounded_expression():
+    client = TestClient(app)
+    assert client.post("/v1/analyze/promql", json={"expr": "up\nup"}).status_code == 422
+    assert client.post("/v1/analyze/promql", json={"expr": ""}).status_code == 422
+    assert client.post("/v1/analyze/promql", json={"expr": "x" * 601}).status_code == 422
+
+
+def test_promql_reaches_the_mcp_path_and_fails_closed_without_grafana():
+    """Without Grafana configured it must report that, never invent a result."""
+
+    response = TestClient(app).post(
+        "/v1/analyze/promql", json={"expr": "sum(slate_queue_depth)"}
+    )
+    assert response.status_code == 503
+    assert response.json()["detail"]["code"] == "grafana_mcp_not_configured"

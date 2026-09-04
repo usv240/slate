@@ -55,7 +55,16 @@ class must be recovered from what FFmpeg actually printed.
 | `tests/test_pipeline.py` | Runs all five scenarios through real FFmpeg and asserts the recovered class; asserts no emitted result contains the scenario name |
 | `benchmark/latest.json` | Five scenarios including a healthy control a label-everything classifier would fail; unrecognised failures are reported as `transcode_failure` and counted as misses |
 | `scripts/mutation_check.py` | Breaks the classifier six ways on purpose and fails if a guard does not notice. Runs in CI. It caught one of our own guards passing while the leak was present |
+| `scripts/check_page.py` | Loads the page in a headless browser and asserts the DOM only JavaScript can build. Runs in CI. It caught the page rendering nothing at all, twice, while every unit test stayed green |
 | CI with `SLATE_REQUIRE_FULL_SUITE=1` | The nine FFmpeg proofs skip themselves without FFmpeg. In CI a skip is a failure, so a broken install cannot leave the badge green over proofs that never ran |
+
+## Driving it with something that is not ours
+
+| Try this | Why it answers the "canned demo" objection |
+|---|---|
+| Load any of the three presets, then press **JSON ↓** and `curl -X POST` the file back | A preset is exactly the create body, not a privileged path. `tests/test_access.py` asserts every preset validates against the real request model and is accepted unchanged |
+| Open **Build your own delivery** and change the ladder | Those rows are the FFmpeg arguments. Ask for `libx265` at 3840×2160 and that is what gets encoded; ask for something out of range and you get a 422 rather than a silent clamp |
+| Type your own PromQL into **Bring your own query** | It goes through the same official `mcp-grafana` server the agents use, and you get the server's raw response — including its own error text if the expression is bad |
 
 ## Verifying the rest is not theatre
 

@@ -1,6 +1,6 @@
 # SLATE implementation status
 
-Updated: 2026-09-02. Live revision `slate-delivery-slo-00027-4zz`, `min-instances 1`.
+Updated: 2026-09-04. Live revision `slate-delivery-slo-00031-g9n`, `min-instances 1`.
 
 ## Complete
 
@@ -56,6 +56,19 @@ Updated: 2026-09-02. Live revision `slate-delivery-slo-00027-4zz`, `min-instance
       if a guard does not notice. It found one guard that blanked every string
       constant before checking, so `getattr(record, "fault_mode")` passed
       straight through it — the guard reported success with the leak present
+
+- [x] **Not a fixed demo path**: three named preset scenarios that load in a click and download
+      as JSON, a custom rendition-ladder builder whose rows become the real FFmpeg arguments,
+      and `/v1/analyze/promql` for a judge's own query through the official MCP server
+- [x] Optional stateless judge keys raising the allowance on the two endpoints that spend Gemini
+      tokens; reads uncapped, abstentions free, a bad key falls back to anonymous
+- [x] Demo-video slot that is honest when empty and becomes a nocookie embed via
+      `SLATE_DEMO_VIDEO_URL`
+- [x] `scripts/check_page.py` loads the page in a headless browser and asserts the DOM only
+      JavaScript can build. **It found the page rendering nothing at all — twice — while the
+      whole suite was green.** A syntax error in one string literal had detached every listener
+- [x] `scripts/seed_board.py` resets the board to three healthy titles with fresh contractual
+      dates, because absolute dates go stale between a seeding and a recording
 
 ## Release tasks
 

@@ -14,6 +14,7 @@ from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from .access import (
     ANONYMOUS_QUOTA,
     KEYED_QUOTA,
+    PROMQL_QUOTA,
     WINDOW_SECONDS,
     KeyIssuingDisabled,
     evaluate as evaluate_access,
@@ -36,10 +37,12 @@ from .models import (
     CreateDelivery,
     DeliveryRecord,
     InvestigationRequest,
+    PromQlRequest,
     RemediationApproval,
 )
 from .report import render_report
 from .pipeline import PipelineRunner
+from .presets import BY_ID, catalogue
 from .store import DeliveryStore
 from .telemetry import SCHEDULE_BUDGET, event
 
@@ -367,6 +370,108 @@ def create_key(label: str = "judge") -> dict[str, object]:
                 ),
             },
         ) from exc
+
+
+@app.get("/v1/presets")
+def list_presets() -> dict[str, object]:
+    """Named scenarios, each one exactly the body POST /v1/deliveries accepts."""
+
+    return {
+        "data": {
+            "presets": catalogue(),
+            "note": (
+                "These are not a separate demo path. Loading one from the page and posting "
+                "the downloaded file with curl create the same record, and every field is "
+                "yours to change."
+            ),
+        }
+    }
+
+
+@app.get("/v1/presets/{preset_id}")
+def download_preset(preset_id: str) -> Response:
+    """The scenario as a file a judge can edit and post back."""
+
+    preset = BY_ID.get(preset_id)
+    if not preset:
+        raise HTTPException(
+            404,
+            detail={"code": "preset_not_found", "message": "Unknown preset.", "known": sorted(BY_ID)},
+        )
+    body = json.dumps(preset.body(), indent=2)
+    return Response(
+        body + chr(10),
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="slate-{preset_id}.json"'},
+    )
+
+
+@app.post("/v1/presets/{preset_id}/load", status_code=201)
+async def load_preset(preset_id: str) -> dict[str, object]:
+    """Create a real delivery from a named scenario."""
+
+    preset = BY_ID.get(preset_id)
+    if not preset:
+        raise HTTPException(
+            404,
+            detail={"code": "preset_not_found", "message": "Unknown preset.", "known": sorted(BY_ID)},
+        )
+    created = await create_delivery(CreateDelivery.model_validate(preset.body()))
+    created["preset"] = {"id": preset.id, "expect": preset.expect}
+    return created
+
+
+@app.post("/v1/analyze/promql")
+async def analyze_promql(
+    request: Request,
+    body: PromQlRequest,
+    authorization: str | None = Header(default=None),
+) -> dict[str, object]:
+    """Run a caller's own PromQL through the official Grafana MCP server.
+
+    The three queries the agents run are fixed on purpose, because an agent that
+    can compose arbitrary queries can also compose a misleading one. That is a
+    deliberate constraint on the agent, not a limit of the integration — so this
+    endpoint hands the same MCP path to a person and returns the server's raw
+    response, unedited.
+
+    It is a read. Nothing here can create a delivery, move a verdict, or write to
+    Grafana.
+    """
+
+    client_ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (
+        request.client.host if request.client else "unknown"
+    )
+    decision = evaluate_access(
+        authorization=authorization, client_ip=f"promql:{client_ip}", quota_override=PROMQL_QUOTA
+    )
+    if not decision.allowed:
+        raise HTTPException(
+            429,
+            detail={
+                "code": "rate_limited",
+                "message": f"{decision.quota} queries per {WINDOW_SECONDS // 60} minutes.",
+                "retry_after_seconds": decision.reset_in,
+            },
+            headers={"Retry-After": str(decision.reset_in)},
+        )
+    try:
+        result = await query_prometheus(body.expr)
+    except GrafanaNotConfigured as exc:
+        raise HTTPException(
+            503, detail={"code": "grafana_mcp_not_configured", "message": str(exc)}
+        ) from exc
+    return {
+        "data": {
+            "expr": body.expr,
+            "transport": "official_mcp_grafana_stdio",
+            "tool": result["tool"],
+            "is_error": result["is_error"],
+            "content": result["content"],
+            "read_only": True,
+            "allowance": {"remaining": decision.remaining, "quota": decision.quota},
+        }
+    }
 
 
 @app.get("/v1/demo")
