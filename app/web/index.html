@@ -120,6 +120,26 @@
     .tool .dot.off{background:var(--muted)}
     .tool .tname{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.8rem;font-weight:700}
     .tool .tfor{font-size:.79rem;color:var(--muted);line-height:1.45}
+    .gloss{background:var(--panel);border:1px solid var(--line);padding:12px 18px;margin-top:12px}
+    .gloss summary{cursor:pointer;font-size:.85rem;font-weight:600}
+    .gloss dl{margin:12px 0 2px;display:grid;grid-template-columns:minmax(120px,auto) 1fr;gap:4px 16px}
+    .gloss dt{font-weight:800;font-size:.8rem}
+    .gloss dd{margin:0;font-size:.81rem;color:var(--muted);line-height:1.5}
+    .gloss code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.75rem;color:var(--ink)}
+    @media(max-width:640px){.gloss dl{grid-template-columns:1fr;gap:2px}.gloss dd{margin-bottom:8px}}
+    .byo{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--navy);padding:14px 18px;margin-bottom:14px}
+    :root[data-theme="dark"] .byo{border-left-color:var(--code-ink)}
+    .byo h3{margin:2px 0 6px;font-size:1.05rem}
+    .byo p{margin:0;font-size:.83rem;color:var(--muted);line-height:1.55}
+    .byo code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.76rem;color:var(--ink)}
+    .start{list-style:none;counter-reset:step;display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px;padding:0;margin:0}
+    .start li{background:var(--panel);border:1px solid var(--line);padding:14px 16px 15px;position:relative}
+    .start li::before{counter-increment:step;content:counter(step);display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--ink);color:var(--paper);font-size:.72rem;font-weight:800;margin-bottom:9px}
+    .start li a{text-decoration:none}
+    .start li a b{font-size:.95rem;line-height:1.3;color:var(--ink);border-bottom:2px solid var(--ok)}
+    .start li a:hover b,.start li a:focus-visible b{color:var(--ok)}
+    .start li p{margin:7px 0 9px;font-size:.82rem;color:var(--muted);line-height:1.5}
+    .start li span{font-size:.65rem;text-transform:uppercase;letter-spacing:.09em;font-weight:800;color:var(--ok)}
     .buys{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--ok);padding:14px 18px;margin-top:14px}
     .buys h4{margin:0 0 4px;font-size:.7rem;text-transform:uppercase;letter-spacing:.09em;color:var(--ok)}
     .buys .blead{font-size:.9rem;line-height:1.5;margin:0 0 10px}
@@ -307,11 +327,12 @@
   <nav id="top">
     <a class="mark" href="/">SLATE / DELIVERY CONTROL</a>
     <div class="navlinks">
-      <a href="#deliveries">Board</a>
+      <a href="#start">Start here</a>
+      <a href="#byo">Bring your own</a>
+      <a href="#board">Board</a>
       <a href="#panel">Panel read</a>
       <a href="#blindspot">Blind spot</a>
-      <a href="#partner">Grafana tools</a>
-      <a href="#query">Your query</a>
+      <a href="#partner">Grafana MCP</a>
       <a href="#boundary">Boundary</a>
     </div>
     <div class="navtools">
@@ -352,6 +373,52 @@
     <div class="stat"><b>Never</b><span>automatic remediation</span></div>
   </section>
 
+  <section id="start">
+    <div class="section-head">
+      <div><div class="eyebrow">New here</div><h2>Three things, about two minutes.</h2></div>
+    </div>
+    <p class="quiet plain">SLATE is an early warning system for a delivery date. A film or episode is finished as a set of encoded versions, and a distributor sets a date in a contract for when they must arrive. SLATE watches the work as it happens and says, before the date, whether the remaining work still fits. If you only do three things, do these.</p>
+    <p class="quiet technical">Each step below runs real FFmpeg on this deployment and reads its telemetry back through the official Grafana MCP server. Nothing is pre-recorded and no figure on this page is written by hand.</p>
+    <ol class="start">
+      <li>
+        <a href="#blindspot"><b>See what a failure alert misses</b></a>
+        <p>Eight real encodes, no fault injected, every one passes, and the delivery still cannot make its date. About thirty seconds.</p>
+        <span>Why the product exists</span>
+      </li>
+      <li>
+        <a href="#deliveries"><b>Watch the agents investigate</b></a>
+        <p>Press <b>Run 20s judge proof</b>. Three Google agents diagnose a real encoder failure using only evidence read through Grafana MCP.</p>
+        <span>How it works</span>
+      </li>
+      <li>
+        <a href="#byo"><b>Drive it with something that is not ours</b></a>
+        <p>Load a preset, rewrite the encode ladder so your own settings run, or send your own PromQL through the same MCP server.</p>
+        <span>Proof it is not a canned demo</span>
+      </li>
+    </ol>
+    <details class="gloss">
+      <summary>Every term on this page, in one line each. Open this if any of it is unfamiliar.</summary>
+      <dl>
+        <dt>Rendition</dt><dd>One encoded version of a title, at a particular resolution, codec and bitrate. A single delivery is usually several of them.</dd>
+        <dt>Delivery</dt><dd>The finished set of renditions handed to a distributor or broadcaster.</dd>
+        <dt>Contractual date</dt><dd>The date in the contract by which the delivery has to arrive. Unlike almost everything else in software, it does not move.</dd>
+        <dt>QC</dt><dd>Quality control. Automated conformance checks on what the encoder actually produced, rather than on what was asked for.</dd>
+        <dt>FFmpeg</dt><dd>The open-source tool that does the encoding. Every duration on this page is a real FFmpeg process that really ran.</dd>
+        <dt>Schedule budget</dt><dd>Time left before the date, minus time the remaining work still needs. Below zero, the delivery is projected to miss.</dd>
+        <dt>p95</dt><dd>The duration 95 out of 100 renditions finish within. Used instead of an average so one slow encode is not hidden by fast ones.</dd>
+        <dt>The gate</dt><dd>The plain function that decides whether a delivery is in trouble. Three conditions, all of which must be true. No model can change its answer.</dd>
+        <dt>Jeopardy</dt><dd>SLATE's word for a delivery now projected to miss its date. It is a verdict, not a failure.</dd>
+        <dt>Failure class</dt><dd>What actually went wrong, recovered from what FFmpeg printed rather than from the scenario that was set up.</dd>
+        <dt>SLO</dt><dd>Service level objective. An engineering idea: state the target explicitly, then track how much room is left against it. SLATE applies it to a delivery date.</dd>
+        <dt>Grafana</dt><dd>The open-source platform this project's partner track is built on. It holds the metrics, logs, traces, dashboards and alerts.</dd>
+        <dt>MCP</dt><dd>Model Context Protocol. The standard way an agent calls a tool. Every Grafana read and write here goes through the official <code>grafana/mcp-grafana</code> server.</dd>
+        <dt>ADK</dt><dd>Google's Agent Development Kit. It builds the three agents here: Watch, Diagnose and Remediate, run in that order.</dd>
+        <dt>Annotation</dt><dd>A marker written onto a Grafana timeline. SLATE writes one only after a human approves an action, so the timeline records the decision.</dd>
+        <dt>Simulated receiver</dt><dd>The one thing here that is not real. Everything up to the handoff runs; the distributor at the far end is stubbed, and the page says so wherever it matters.</dd>
+      </dl>
+    </details>
+  </section>
+
   <section class="console solo" id="consoleRow">
     <div class="panel" id="demoPanel" hidden>
       <h3>The three-minute demonstration</h3>
@@ -376,6 +443,12 @@
     <div class="section-head">
       <div><div class="eyebrow">Live control board</div><h2>Every title. One immovable date.</h2></div>
       <span class="quiet" id="updated">Waiting for API</span>
+    </div>
+    <div class="byo" id="byo">
+      <div class="eyebrow">Bring your own</div>
+      <h3>None of this is our fixture.</h3>
+      <p class="plain">Three ways to drive SLATE with something we did not choose. Load a preset below, open the builder and change the encode ladder, or type your own PromQL further down the page.</p>
+      <p class="technical">A preset is <em>exactly</em> the body <code>POST /v1/deliveries</code> accepts: download the JSON, post it back unchanged, and you get the same record. The builder rows are the FFmpeg arguments themselves, so asking for <code>libx265</code> at 3840x2160 encodes that; asking for something out of range returns a 422 rather than a silent clamp.</p>
     </div>
     <div class="presets" id="presets"></div>
 
