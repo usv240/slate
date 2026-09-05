@@ -1,4 +1,4 @@
-# Demo video script — 2:49
+# Demo video script — 2:45
 
 Hard limit 3:00; only the first 3:00 is evaluated.
 
@@ -13,8 +13,9 @@ that sentence.
 words at 165 wpm, takes the measured execution time declared in each beat, and costs every beat
 at `max(talking, waiting)` — because talking over a wait is free, and you cannot talk for forty
 seconds over a five second click. Re-run it after any edit to the narration — it has twice caught
-a runtime the author had estimated wrong by hand. Current estimate: **2:49, eleven seconds of
-margin.**
+a runtime the author had estimated wrong by hand. Current estimate: **2:45, fifteen seconds of
+margin.** `--fix-headings` renumbers the beats from those same costs, so the timestamps cannot
+drift out of step with the narration.
 
 The riskiest beat is the agent investigation at 47s: it is the only one where the product, not
 you, sets the pace.
@@ -63,21 +64,20 @@ afterwards so the recording opens clean.
 
 ---
 
-## 0:00–0:19 · The problem, and what missing it costs
+## 0:00–0:18 · The problem, and what missing it costs
 <!-- exec: 0 -->
 
 > **DO:** Board on screen, three green titles. Do not scroll, do not touch anything.
 > **POINT:** The contract dates on the three cards.
 
-**"A delivery date in post-production is contractual. Miss it and a release slips or a
-broadcaster handoff is gone. But nobody finds out they're going to miss it until they miss it —
-because everything upstream watches for things breaking, not for whether the work still fits."**
-
-*(45 words · 16s)*
+**"A delivery date in post-production is contractual. Miss it and a release can slip, or a
+broadcaster handoff can be missed. But nobody finds out they're going to miss it until they miss
+it — because everything upstream watches for things breaking, not for whether the work still
+fits."**
 
 ---
 
-## 0:19–0:53 · The miss with zero failures  ← the most important 35 seconds
+## 0:18–0:48 · The miss with zero failures  ← the most important 30 seconds
 <!-- exec: 28 -->
 
 > **DO:** Scroll to **"What a failure alert cannot see"**, press **Prove it: a miss with zero
@@ -100,11 +100,10 @@ Every encode is going to pass."**
 **"Wave three. Twenty-eight seconds of work, nineteen seconds of window. Nothing failed — but the
 work no longer fits before the deadline."**
 
-*(88 words · 32s, over ~28s of real encoding)*
 
 ---
 
-## 0:53–1:10 · Three detectors, same run
+## 0:48–1:06 · Three detectors, same run
 <!-- exec: 2 -->
 
 > **DO:** The comparison renders underneath on its own.
@@ -114,11 +113,10 @@ work no longer fits before the deadline."**
 and it stays silent until the date goes by. A deadline check: silent, and useless. SLATE fired
 before the deadline, while there was still time to act. That's the difference."**
 
-*(48 words · 17s)*
 
 ---
 
-## 1:10–1:58 · The agents, on real evidence
+## 1:06–1:54 · The agents, on real evidence
 <!-- exec: 47 -->
 
 > **DO:** Scroll to the board, find the `at_risk` codec-fault delivery, press **Ask ADK agents**.
@@ -126,21 +124,19 @@ before the deadline, while there was still time to act. That's the difference."*
 > **POINT:** While it runs — the PromQL, LogQL and Tempo rows as they appear.
 
 **"Now the other half. This one did fail — a missing encoder. Three Google agents investigate it,
-and every observation goes through the official Grafana MCP server: the metrics, the logs, and
-the trace for this exact delivery. Nothing is summarised from memory."**
+and every observation goes through the official Grafana MCP server: the metrics, logs, and trace
+for this exact delivery. The diagnosis has to come from that evidence."**
 
 > *Investigation lands.*
 > **POINT:** The quoted stderr inside the Diagnose block.
 
-**"There. The diagnosis has to come from real evidence — it's quoting FFmpeg's actual error,
-'Unknown encoder', not an answer we planted in the scenario. An earlier build of this did plant
-it, scored a hundred percent, and was measuring nothing."**
-
-*(85 words · 31s, over ~47s of real agent execution)*
+**"There. It's quoting FFmpeg's actual error — 'Unknown encoder' — not an answer we planted in
+the scenario. An earlier build of this did plant it, scored a hundred percent, and was measuring
+nothing."**
 
 ---
 
-## 1:58–2:19 · Propose, approve, recover
+## 1:54–2:14 · Propose, approve, recover
 <!-- exec: 10 -->
 
 > **DO:** Scroll to the remediation options. Press **Approve** on the recommended one. Then press
@@ -152,31 +148,29 @@ actually carry out, each with its schedule cost. The agent recommends, the human
 that approval is what writes the Grafana annotation, not the agent. Re-run, and the delivery is
 recovered before its date."**
 
-*(53 words · 19s + ~10s of execution)*
 
 ---
 
-## 2:19–2:39 · Grafana draws it, Gemini reads it
+## 2:14–2:35 · Grafana draws it, Gemini reads it
 <!-- exec: 18 -->
 
 > **DO:** Press **Render the panel through MCP** *now*, then immediately scroll up to the
 > integration section and talk while it renders (~17s).
-> **POINT:** First the `7 / 72` tiles and the declines list. Then scroll back down for the reveal.
+> **POINT:** The `7 / 72` tiles — the honest ratio is on screen while you name the seven surfaces.
+> Then scroll back down for the reveal.
 
-**"While that renders — the receiver at the end is simulated, and the page says so. Seven of
-seventy-two Grafana tools, and the ones we skipped are listed with reasons. None of this is a
-canned path either: every preset downloads as JSON and posts straight back."**
+**"While that renders — the final receiver is simulated, and the page says so. SLATE uses seven
+Grafana MCP tools: metrics, logs, traces, dashboard search, alert rules, annotations and
+rendering."**
 
 > *Scroll back down. The PNG and the reading sit side by side.*
 
-**"And this: Grafana rendered that panel, MCP carried the PNG back, and Gemini read the chart the
-supervisor is looking at."**
-
-*(66 words · 24s)*
+**"And there it is. Grafana rendered that panel, MCP carried the image back, and Gemini read the
+same chart the supervisor is looking at."**
 
 ---
 
-## 2:41–2:49 · Close
+## 2:35–2:44 · Close
 <!-- exec: 0 -->
 
 > **DO:** Stay on the panel reading. Do not scroll further.
@@ -185,7 +179,6 @@ supervisor is looking at."**
 **"Apache-2.0, repo and app in the description. SLATE — treat a date you can't move like the
 objective it already is."**
 
-*(22 words · 8s)*
 
 ---
 
@@ -195,8 +188,8 @@ Do not re-record from the top. Each of these is recoverable in one sentence:
 
 - **A wave runs slow and the gate opens on wave two.** Say *"there it is, a wave early"* and carry
   on. The point is that it opened with zero failures, not which wave it was.
-- **The investigation runs past 47s.** Cut the "none of this is a canned path" clause in beat 6.
-  That is your slack.
+- **The investigation runs past 47s.** Cut the list of seven surfaces in beat 6 down to
+  "metrics, logs, traces and alerts". That is your slack.
 - **The panel render fails.** Say *"that one needs the renderer and it isn't answering — the
   reading is commentary anyway, the gate already decided"*, then go to the close. It costs the
   Idea beat, not the video.

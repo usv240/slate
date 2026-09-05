@@ -15,6 +15,7 @@ and the beats are summed. Execution times are declared in the script itself as
 `<!-- exec: 27 -->` comments so this stays honest when the narration is edited.
 
     python scripts/time_script.py
+    python scripts/time_script.py --fix-headings   # renumber the beats to match
 """
 
 from __future__ import annotations
@@ -51,7 +52,30 @@ def beats(text: str) -> list[tuple[str, int, float]]:
     return found
 
 
+def rewrite_headings(text: str, rows: list[tuple[str, int, float]]) -> str:
+    """Renumber the beat timestamps from the measured costs.
+
+    Hand-written timestamps drift the moment narration is edited, and a reader
+    then finds a two second gap between one beat ending and the next starting.
+    The costs are already computed, so the headings can just be derived.
+    """
+
+    clock = 0.0
+    for heading, words, execution in rows:
+        cost = max(words / WORDS_PER_MINUTE * 60, execution) + TRANSITION_SECONDS
+        start, end = clock, clock + cost
+        title = heading.split("·", 1)[1].strip() if "·" in heading else heading
+        stamped = (
+            f"{int(start // 60)}:{int(start % 60):02d}–{int(end // 60)}:{int(end % 60):02d}"
+            f" · {title}"
+        )
+        text = text.replace(f"## {heading}", f"## {stamped}", 1)
+        clock = end
+    return text
+
+
 def main() -> int:
+    fix = "--fix-headings" in sys.argv
     text = SCRIPT.read_text(encoding="utf-8")
     rows = beats(text)
     if not rows:
@@ -66,6 +90,10 @@ def main() -> int:
         cost = max(say, execution) + TRANSITION_SECONDS
         total += cost
         print(f"{heading[:44]:<44} {words:>6} {say:>6.0f}s {execution:>6.0f}s {cost:>6.0f}s")
+
+    if fix:
+        SCRIPT.write_text(rewrite_headings(text, rows), encoding="utf-8")
+        print(chr(10) + "headings renumbered from the measured costs")
 
     print("-" * 76)
     minutes, seconds = divmod(int(round(total)), 60)
