@@ -99,6 +99,15 @@ Updated: 2026-09-04. Live revision `slate-delivery-slo-00037`, `min-instances 1`
       eight-rendition case that is a miss by 8.2s doing nothing and a landing with 5.8s to spare
       with one more worker. It can return bad news, and a test pins a case no capacity recovers
 
+- [x] **The board keeps itself alive.** Judging happens weeks after submission, and a contractual
+      date is absolute, so a hand-seeded board would have shown three expired contracts to every
+      judge. `slate_app/fixtures.py` rolls the three board fixtures forward when they come within
+      two hours of their date, clears their burn history, and drops one-off deliveries after a
+      day. Only the date moves: p95, job results and QC outcomes stay as the real runs left them,
+      and a visitor's own delivery is never rewritten and is allowed to expire. The policy is on
+      the board and at `/v1/board/fixtures`, and six tests pin it, including one asserting a
+      visitor's expired delivery keeps its expired date
+
 ## Release tasks
 
 - [ ] Record and publish the under-three-minute demo. Script in `docs/DEMO-SCRIPT.md`

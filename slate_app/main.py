@@ -22,6 +22,7 @@ from .access import (
 )
 from .gate import evaluate_jeopardy
 from .intervention import outcomes as intervention_outcomes
+from .fixtures import refresh as refresh_board_fixtures
 from .grafana_mcp import (
     GrafanaMcp,
     GrafanaNotConfigured,
@@ -53,6 +54,9 @@ from .presets import BY_ID, catalogue
 from .store import DeliveryStore
 from .telemetry import SCHEDULE_BUDGET, event
 
+
+FIXTURE_REFRESH_EVERY_SECONDS = 60.0
+_LAST_FIXTURE_REFRESH = -1e9
 
 app = FastAPI(title="SLATE API", version="0.2.0")
 store = DeliveryStore()
@@ -698,7 +702,43 @@ async def delete_delivery(delivery_id: str) -> dict[str, object]:
 
 @app.get("/v1/deliveries")
 def list_deliveries() -> dict[str, object]:
+    """The board, with its three fixtures kept in date.
+
+    Reading the board is what triggers the refresh. A deployment sits idle
+    between a submission and a judging window weeks later, so a startup hook
+    would have run once, in the wrong month. Doing it here means the board is
+    correct for whoever opens it, whenever that is. The work is throttled, and
+    a failure is swallowed: a stale board is bad, a board that will not load is
+    worse.
+    """
+
+    global _LAST_FIXTURE_REFRESH
+    monotonic = time.monotonic()
+    if monotonic - _LAST_FIXTURE_REFRESH > FIXTURE_REFRESH_EVERY_SECONDS:
+        _LAST_FIXTURE_REFRESH = monotonic
+        try:
+            result = refresh_board_fixtures(store)
+            if result["rolled_forward"] or result["pruned"]:
+                event(
+                    "board_fixtures_refreshed",
+                    rolled_forward=result["rolled_forward"],
+                    pruned=len(result["pruned"]),
+                )
+        except Exception as exc:  # noqa: BLE001 - the board must still render
+            event("board_fixture_refresh_failed", error=type(exc).__name__)
     return {"data": [record.model_dump(mode="json") for record in store.list()]}
+
+
+@app.get("/v1/board/fixtures")
+def board_fixtures() -> dict[str, object]:
+    """What the board rewrites for itself, and what it refuses to.
+
+    Stated as an endpoint rather than left for someone to discover: a board that
+    silently edits its own records would be exactly the kind of thing this
+    project spends the rest of its time proving it does not do.
+    """
+
+    return {"data": refresh_board_fixtures(store)}
 
 
 @app.post("/v1/deliveries/{delivery_id}/run")

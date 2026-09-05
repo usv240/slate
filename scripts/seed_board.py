@@ -1,9 +1,14 @@
 """Put the board into the state a judge should first see.
 
 Contractual dates are absolute, so a board seeded on Monday shows expired
-contracts by Thursday. This is not something to paper over in the product: a
-delivery whose date has passed *should* look wrong. It is something to fix
-before recording or before a judging window opens.
+contracts by Thursday. The deployment now handles that itself: `slate_app/fixtures.py`
+rolls the three board fixtures forward as they approach their dates, so a judge
+opening the page weeks after submission does not find a dead board.
+
+This script is still the way to get a clean slate deliberately, which is what
+you want before recording: it removes everything, including deliveries left by
+other visitors, and runs each title once so the board opens with real
+measurements rather than an empty shell.
 
 The script removes existing deliveries, and the Grafana alert rule provisioned
 with each, then creates three healthy titles with day-scale windows and runs

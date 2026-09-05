@@ -76,6 +76,11 @@ class DeliveryRecord(BaseModel):
     recovering: bool = False
     last_investigation: dict[str, object] | None = None
     decisions: list[dict[str, object]] = []
+    #: Set on the three titles that make up the demo board. It carries the
+    #: contract window in hours so the date can be rolled forward when it
+    #: expires, which is what keeps the board alive between a submission and a
+    #: judging window weeks later. Nothing a visitor creates carries it.
+    fixture_window_hours: float | None = None
 
 
 class ThresholdResult(BaseModel):
