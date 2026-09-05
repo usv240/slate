@@ -1,147 +1,230 @@
-# Demo video script — 2:50
+# Demo video script — 2:51
 
-Hard limit is 3:00; only the first 3:00 is evaluated.
+Hard limit 3:00; only the first 3:00 is evaluated.
 
-**Rules to honour while recording**
+**Timed, not guessed.** `python scripts/time_script.py` reads this file, counts the narrated
+words at 165 wpm, takes the measured execution time declared in each beat, and costs every beat
+at `max(talking, waiting)` — because talking over a wait is free, and you cannot talk for forty
+seconds over a five second click. Current estimate: **2:51, nine seconds of margin.** Re-run it
+after any edit to the narration.
 
-- Show the product *executing*, not slides pretending to be execution.
-- No third-party logos, music, advertising, or footage. Everything on screen is this app, this
-  repository, this Grafana stack, this terminal.
-- English narration, or English subtitles.
-- Upload Public to YouTube or Vimeo before submitting.
+The riskiest beat is the agent investigation at 47s: it is the only one where the product, not
+you, sets the pace. If it runs long, cut the "not our fixture" beat and you are back to 2:37.
 
-**Setup before you hit record**
+## How this script is built
 
-- `python scripts/seed_board.py` — contractual dates are absolute, so a board seeded days ago
-  shows expired contracts. This resets it to three healthy titles with fresh windows and runs
-  each once so the metrics are live.
-- `python scripts/check_page.py` — confirms the page actually initialises. It has caught the
-  page rendering nothing twice.
+Rules.md scores four **equally weighted** criteria, 25% each. The video is the evidence for all
+four, and Potential Impact says explicitly *"based on what's demonstrated"* — so every beat below
+is tagged with the criterion it exists to earn. Nothing is here for decoration.
+
+| Beat | Earns |
+|---|---|
+| 1. The problem | Impact — a real audience with a costly problem |
+| 2. The miss with zero failures | **Impact** — the strongest thing SLATE has |
+| 3. Three detectors disagree | **Impact** — a before/after that changes a decision |
+| 4. Agents on real evidence | **Tech** — partner depth, and the non-circularity fix |
+| 5. Approve → recovered | **Design** — a complete product loop, not a proof of concept |
+| 6. Grafana draws, Gemini reads | **Idea** — the non-obvious partner use |
+| 7. Boundaries and close | Trust — a judge who finds a weakness you already named trusts the rest |
+
+**The two waits are the point, not dead air.** The miss proof takes ~30s and the investigation
+~45s. Narration spoken over an existing wait is free time, and that is where half this script
+lives. Do not cut either wait; the wait is the proof it is really running.
+
+---
+
+## Before you hit record
+
+```bash
+python scripts/seed_board.py     # fresh contractual dates, three green titles
+python scripts/check_page.py     # confirms the page actually initialises
+```
+
+Then, **as setup and not on camera**: press **Run 20s judge proof** once and let it finish. That
+leaves one `at_risk` codec-fault delivery on the board, which beat 4 uses. Reload the page
+afterwards so the recording opens clean.
 
 - Browser at 1440×900, zoom 100%, signed out, no extensions visible.
-- The board should already show the three seeded titles, all green.
-- Second tab: the Grafana control tower, already loaded.
-- Third tab: the GitHub repository at the root.
-- The judge proof takes about 20 seconds of real FFmpeg and the investigation about 45. Do not
-  cut either — the wait is the proof it is really running. Narrate over both.
+- One tab. Everything in this script is on the one page.
+- Do a silent dry run first. The buttons are the script.
 
 ---
 
-## 0:00–0:15 — The failure, one sentence
+## 0:00–0:12 · The problem
+<!-- exec: 0 -->
 
-> *Board on screen, three green titles. Do not scroll.*
+> **DO:** Board on screen, three green titles. Do not scroll, do not touch anything.
+> **POINT:** The contract dates on the three cards.
 
-"A delivery date in post-production is contractual. You cannot move it. But nobody finds out
-they are going to miss it until they miss it — because everything upstream is monitored for
-whether a machine is broken, not for whether the remaining work still fits."
+**"A delivery date in post-production is contractual. You can't move it. But nobody finds out
+they're going to miss it until they miss it — because everything upstream watches for things
+breaking, not for whether the work still fits."**
 
-## 0:15–0:33 — What the board is
-
-> *Point at one card: the contract, the specs, the measured p95, the burn-down.*
-
-"Three titles under contract. For each one SLATE knows the measured cost of a rendition,
-because it just encoded one. Delivery window minus remaining work is a schedule budget, and the
-dashed line on each sparkline is the contractual date."
-
-## 0:33–1:05 — The gate refuses to panic
-
-> *Press **Run 20s judge proof**. Let all three windows run.*
-
-"This creates a delivery whose encoder does not exist, and runs the real pipeline three times.
-Watch it stay healthy — because one bad window is not evidence. Jeopardy needs three facts at
-once: projected completion past the contract, burn sustained across two windows, and work still
-outstanding."
-
-> *Third window lands, status flips to at risk.*
-
-"Third window. All three true. Now it opens."
-
-## NEW BEAT — insert at 1:05, trim the closing if needed
-
-> *Scroll to "What a failure alert cannot see". Press **Prove it: a miss with zero failures**.*
-
-"One more, and it is the one that matters. Eight renditions, a fifty second window, and I am
-injecting no fault at all. Every encode is going to pass."
-
-> *Let the three waves run. Point at the failure count staying zero.*
-
-"Zero failures. But the work left just went past the window left. Now look at what each detector
-says about this same run: a failure alert is silent, because nothing failed. It stays silent
-until the date goes by. SLATE fired twenty seconds before it."
-
-> *Point at the `not_claimed` line.*
-
-"And it says what it does not claim: on a hard failure, a failure alert wins. It is answering a
-different question."
-
-## 1:05–1:30 — The part we had to fix
-
-> *Investigation renders. Point at the Diagnose block, at the quoted stderr.*
-
-"An earlier build of this wrote the fault we injected onto the trace, then asked the model to
-diagnose it. It scored a hundred percent, and it was measuring nothing. So the scenario now only
-configures reality — a real missing encoder — and the class has to come back out of what FFmpeg
-actually printed."
-
-> *Point at the `classification_source` pill, then at the stderr line.*
-
-"Deterministic classifier, reading stderr. `Unknown encoder`. Two tests fail the build if that
-classifier can even see the scenario name."
-
-## 1:30–1:55 — Evidence, and what the agents are for
-
-> *Point at the PromQL, LogQL and Tempo rows.*
-
-"Every one of those came through the official Grafana MCP server — metrics, the logs carrying
-that stderr, and the trace for this delivery. The three ADK agents corroborate the gate and the
-class against that evidence. They cannot change either."
-
-## 1:55–2:20 — A costed proposal, a human, a recovery
-
-> *Scroll to the options.*
-
-"Remediate proposes in a typed schema, limited to the four things this API can actually do, each
-with a schedule cost. Approve the recommended one."
-
-> *Approve. Then press **Run real pipeline**.*
-
-"That approval is what writes the Grafana annotation — not the agent. And now the requeue
-completes, and the delivery comes back green. Recovered."
-
-> *Optional, if time is tight, drop this line:* "Approving anything the agent did not propose is
-> refused with a 409."
-
-## 2:20–2:38 — Grafana's own tool closing the loop
-
-> *Scroll to the panel section. Press **Render the panel through MCP**.*
-
-"Last thing. Grafana renders the schedule-budget panel, MCP carries the PNG back, and Gemini
-reads the picture — the same chart the supervisor is looking at. That reading is commentary. The
-decision source is still the gate."
-
-## 2:38–2:50 — Boundaries and close
-
-> *Scroll to the evidence boundary card, then the dark gate section.*
-
-"The receiver at the end is simulated, and it says so. Everything before it is real execution.
-Five scenarios is engineering evidence, not an accuracy study, and the prior art on schedule
-forecasting is named in the repo rather than argued away. Apache-2.0, repo and app in the
-description. SLATE — treat a date you cannot move like the objective it already is."
+*(38 words · 14s)*
 
 ---
+
+## 0:12–0:52 · The miss with zero failures  ← the most important 40 seconds
+<!-- exec: 28 -->
+
+> **DO:** Scroll to **"What a failure alert cannot see"**, press **Prove it: a miss with zero
+> failures**. Then keep talking. Do not cut the waves.
+> **POINT:** The failure count as each wave lands. It stays at zero.
+
+**"So watch this. Eight renditions, a fifty-second window, and I'm injecting no fault at all.
+Every encode is going to pass."**
+
+> *Wave 1 lands.*
+
+**"Wave one. Nothing failed. Thirty-five seconds of work left, forty-three of window. Fine."**
+
+> *Wave 2 lands.*
+
+**"Wave two. Still nothing failed. But the work isn't shrinking as fast as the clock is."**
+
+> *Wave 3 lands. Status flips to at risk.*
+
+**"Wave three. Twenty-eight seconds of work, nineteen seconds of window. That delivery is now
+going to miss its date — and not one thing has broken."**
+
+*(90 words · 33s, spread across ~40s of real encoding)*
+
+---
+
+## 0:52–1:10 · Three detectors, same run
+<!-- exec: 2 -->
+
+> **DO:** The comparison renders underneath on its own.
+> **POINT:** Each row in turn — `any_failure`, then `deadline_passed`, then `slate_gate` and its
+> lead time.
+
+**"Here's what three detectors say about that exact run. A failure alert: silent — nothing
+failed, and it stays silent until the date goes by. A deadline check: silent. Ours fired nineteen
+seconds before the date. That's the whole product."**
+
+*(42 words · 15s)*
+
+---
+
+## 1:10–1:54 · The agents, on real evidence
+<!-- exec: 47 -->
+
+> **DO:** Scroll to the board, find the `at_risk` codec-fault delivery, press **Ask ADK agents**.
+> Narrate over the wait.
+> **POINT:** While it runs — the PromQL, LogQL and Tempo rows as they appear.
+
+**"Now the other half. This delivery did fail — a missing encoder. Three Google ADK agents on
+Gemini, and every observation goes through the official Grafana MCP server. Metrics, logs,
+traces."**
+
+> *Investigation lands.*
+> **POINT:** The quoted stderr inside the Diagnose block.
+
+**"There. Diagnose is quoting FFmpeg's actual stderr — 'Unknown encoder'. An earlier build of
+this wrote the fault we injected onto the trace and asked the model to diagnose it. It scored a
+hundred percent and measured nothing. Now a deterministic classifier reads stderr, and two tests
+fail the build if it can even see the scenario name."**
+
+*(100 words · 36s, over ~45s of real agent execution)*
+
+---
+
+## 1:54–2:16 · A costed proposal, a human, a recovery
+<!-- exec: 10 -->
+
+> **DO:** Scroll to the remediation options. Press **Approve** on the recommended one. Then press
+> **Run real pipeline** on that delivery.
+> **POINT:** The schedule cost on each option, then the status pill flipping to `recovered`.
+
+**"Remediate proposes in a typed schema — only the four things this API can actually do, each one
+costed. I approve one. That approval is what writes the Grafana annotation, not the agent.
+Re-run, and it's recovered."**
+
+*(38 words · 14s + ~8s of execution)*
+
+---
+
+## 2:16–2:29 · It is not our fixture
+<!-- exec: 0 -->
+
+> **DO:** Scroll up to the preset cards. Hover the **JSON ↓** button on one of them.
+> **POINT:** The three preset cards, then the **Build your own delivery** row beneath them.
+
+**"And none of this is a canned path. Every preset downloads as JSON and posts straight back to
+the same endpoint. You can build your own rendition ladder, and run your own PromQL through the
+same MCP server."**
+
+*(38 words · 14s — this is the first beat to cut if you are running long)*
+
+---
+
+## 2:29–2:52 · Grafana draws it, Gemini reads it
+<!-- exec: 18 -->
+
+> **DO:** Press **Render the panel through MCP** *now*, then immediately scroll up to the
+> integration section and talk while it renders (~17s).
+> **POINT:** First the `7 / 72` tiles and the declines list. Then scroll back down for the reveal.
+
+**"While that renders — the boundaries. The receiver at the end is simulated, and the page says
+so. Seven of seventy-two Grafana tools, and the ones we skipped are listed with the reason."**
+
+> *Scroll back down. The PNG and the reading sit side by side.*
+
+**"And this: Grafana rendered that panel, MCP carried the PNG back, and Gemini read the chart —
+the same picture the supervisor is looking at."**
+
+*(60 words · 22s)*
+
+---
+
+## 2:52–3:00 · Close
+<!-- exec: 0 -->
+
+> **DO:** Stay on the panel reading. Do not scroll further.
+> **POINT:** Nothing. Let it sit.
+
+**"Apache-2.0, repo and app in the description. SLATE — treat a date you can't move like the
+objective it already is."**
+
+*(22 words · 8s)*
+
+---
+
+## If something fails on camera
+
+Do not re-record from the top. All three of these are recoverable in one sentence:
+
+- **A wave runs slow and the gate opens on wave two.** Say *"there it is, a wave early"* and carry
+  on. The point is that it opened with zero failures, not which wave it was.
+- **The investigation runs past 45s.** There is ~20s of slack in beats 6 and 7. Trim the
+  boundaries sentence and keep the reveal.
+- **You are running long.** Cut the "not our fixture" beat entirely. It is 14 seconds and
+  nothing later depends on it.
+- **The panel render fails.** Say *"that one needs the renderer and it isn't answering — the
+  reading is commentary anyway, the gate already decided"*, then go to the close. It costs the
+  Idea beat, not the video.
 
 ## Shot checklist
 
-- [ ] Board opens with three green contracted titles and visible burn-downs
-- [ ] Judge proof run live, all three windows shown, not cut
-- [ ] The two healthy windows explicitly called out as restraint
-- [ ] Diagnose's quoted FFmpeg stderr legible on screen
-- [ ] `decision_source` and `classification_source` both visible
-- [ ] PromQL, LogQL and Tempo evidence rows visible
+- [ ] Board opens with three green contracted titles
+- [ ] Miss proof pressed live; **failure count visibly zero across all three waves**
+- [ ] Work-left versus window-left called out on the final wave
+- [ ] All three detector rows legible, with the lead time
+- [ ] Agent investigation pressed live, not cut
+- [ ] **Quoted FFmpeg stderr legible on screen**
+- [ ] `decision_source` and `classification_source` visible at least once
 - [ ] Typed remediation options with schedule costs visible
-- [ ] Approval pressed on camera, annotation confirmed
-- [ ] Re-run to `recovered` shown
-- [ ] Panel rendered through MCP and read by Gemini, PNG visible beside the reading
-- [ ] Simulated-receiver boundary stated out loud
-- [ ] Public URL and repo URL legible at normal playback size
-- [ ] Under 3:00, uploaded Public, English audio or subtitles
+- [ ] Approval pressed on camera, `recovered` shown
+- [ ] `7 / 72` tiles and the declines list on screen
+- [ ] Rendered PNG shown beside Gemini's reading
+- [ ] Simulated receiver stated out loud
+- [ ] Under 3:00, uploaded **Public**, English audio or subtitles
+
+## Rules compliance for the video itself
+
+- ≤3 minutes, English, public on YouTube or Vimeo — Rules.md §7B.
+- Everything on screen is this app, this Grafana stack, this repository. No third-party footage,
+  music, logos or advertising anywhere.
+- All media is generated at runtime by FFmpeg from a `lavfi` pattern, so nothing on screen is
+  owned by anyone else.
+- Show the product *executing*. No slides pretending to be execution.
