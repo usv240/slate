@@ -447,7 +447,7 @@
       <div class="links" id="demoLinks"></div>
     </div>
     <div class="panel">
-      <h3>Run it yourself</h3>
+      <h3>Run it yourself<span class="info" tabindex="0" role="note" data-tip="Everything on this page is a public API you can call from a terminal. No signup, no key needed to read anything. A key only raises how often you can spend our Gemini budget." aria-label="What this means: Everything on this page is a public API you can call from a terminal. No signup, no key needed to read anything. A key only raises how often you can spend our Gemini budget.">i</span></h3>
       <p class="sub">No signup. A key is optional and only raises the allowance on the two endpoints that spend Gemini tokens; every read is uncapped.</p>
       <div class="keyrow">
         <button class="primary" id="keyButton" type="button">Get a free API key</button>
@@ -478,7 +478,7 @@
       <summary style="cursor:pointer;font-weight:600">Build your own delivery: these specs drive the real FFmpeg commands</summary>
       <p class="sub" style="margin-top:10px">Every row below becomes an actual encode. Resolution, codec and bitrate are passed to FFmpeg unchanged, and the QC stage decodes what comes back rather than trusting what was requested.</p>
       <div class="buildhead">
-        <span>Rendition</span><span>Width</span><span>Height</span><span>Codec</span><span>kb/s</span><span></span>
+        <span>Rendition<span class="info" tabindex="0" role="note" data-tip="A name for this version of the title, for example proxy or review. One row here is one file that actually gets encoded." aria-label="What this means: A name for this version of the title, for example proxy or review. One row here is one file that actually gets encoded.">i</span></span><span>Width<span class="info" tabindex="0" role="note" data-tip="Frame width in pixels. This is passed to FFmpeg unchanged, and what comes back is decoded and checked, so asking for it does not mean getting it." aria-label="What this means: Frame width in pixels. This is passed to FFmpeg unchanged, and what comes back is decoded and checked, so asking for it does not mean getting it.">i</span></span><span>Height<span class="info" tabindex="0" role="note" data-tip="Frame height in pixels. Out-of-range values are refused with an error rather than quietly adjusted to something we can do." aria-label="What this means: Frame height in pixels. Out-of-range values are refused with an error rather than quietly adjusted to something we can do.">i</span></span><span>Codec<span class="info" tabindex="0" role="note" data-tip="Which encoder to use. libx264 is fast and ordinary; libx265 is slower and much heavier, which is how the miss demonstration creates real time pressure." aria-label="What this means: Which encoder to use. libx264 is fast and ordinary; libx265 is slower and much heavier, which is how the miss demonstration creates real time pressure.">i</span></span><span>kb/s<span class="info right" tabindex="0" role="note" data-tip="Target bitrate in kilobits per second. Higher means a bigger file and a longer encode, so this is one of the levers that decides whether the work fits." aria-label="What this means: Target bitrate in kilobits per second. Higher means a bigger file and a longer encode, so this is one of the levers that decides whether the work fits.">i</span></span><span></span>
       </div>
       <div id="specRows"></div>
       <div class="keyrow">
@@ -544,7 +544,7 @@
 
   <section id="query">
     <div class="section-head">
-      <div><div class="eyebrow">Bring your own query</div><h2>The MCP path is general, not three canned calls.</h2></div>
+      <div><div class="eyebrow">Bring your own query</div><h2>The MCP path is general, not three canned calls.<span class="info" tabindex="0" role="note" data-tip="The agents are restricted to three fixed queries on purpose, because an agent free to write any query can write a misleading one. That restriction is on the agent, not the integration: type anything here and it goes down the same path." aria-label="What this means: The agents are restricted to three fixed queries on purpose, because an agent free to write any query can write a misleading one. That restriction is on the agent, not the integration: type anything here and it goes down the same path.">i</span></h2></div>
     </div>
     <p class="quiet plain">The agents run three fixed queries on purpose, because an agent free to compose any query can also compose a misleading one. That is a limit we put on the agent, not on the integration. Type your own PromQL and it goes through the same official Grafana MCP server.</p>
     <p class="quiet technical">Posts to <code>/v1/analyze/promql</code>, which calls <code>query_prometheus</code> over the official <code>mcp-grafana</code> stdio transport and returns the server's raw response. Read only.</p>
@@ -586,6 +586,20 @@ const DASHBOARD=GRAFANA+'/d/slate-delivery-slo/slate-c2b7-contractual-delivery-s
 $('#grafanaLink').href=DASHBOARD;
 
 /* ---------- plain-language help ---------- */
+// The three kinds of evidence, and what each one is for.
+const SIGNAL_TIP={
+  PROMQL:'Numbers over time, from Prometheus: how much slack is left, how deep the queue is, how many versions failed. This is the shape of the problem.',
+  LOGQL:'The actual text the encoder printed, from Loki. This is where the real error message lives, which is why the diagnosis can quote it instead of paraphrasing.',
+  TEMPO:'The trace: this one delivery followed step by step, from reading the source through encoding and checking to handoff, with how long each step took.'
+};
+
+// The three conditions the gate checks. All must be true at once.
+const GATE_TIP={
+  projected_completion_after_contract:'At the speed this is actually encoding, it finishes after its date. If this is not met, there is nothing to worry about yet.',
+  positive_burn_sustained_two_windows:'It has been losing slack for at least two checks in a row. This is what stops one slow moment from raising an alarm, and it is why the judge proof takes three runs rather than one.',
+  work_remaining_positive:'There is still encoding left to do. A delivery that has already finished cannot miss its date.'
+};
+
 // The three detectors, in the order a reader meets them.
 const DETECTOR_TIP={
   any_failure:'The ordinary alert almost every pipeline already has: it fires the moment something breaks. Useful, but it is answering a different question, because a delivery can be lost without anything breaking.',
@@ -820,7 +834,9 @@ function promValue(block){
 function rowCount(block){try{return (JSON.parse(block.content[0].text).data||[]).length}catch(e){return 0}}
 function evidenceRow(host,src,query,value,href){
   const q=mkel('div',undefined,'q');
-  q.append(mkel('span',src,'qsrc '+src.toLowerCase()));
+  const badge=mkel('span',src,'qsrc '+src.toLowerCase());
+  badge.append(info(SIGNAL_TIP[src]||'One of the three signals the agents were given.'));
+  q.append(badge);
   const c=mkel('code',query);
   if(href){const a=mkel('a');a.href=href;a.target='_blank';a.rel='noreferrer';a.append(c);q.append(a)}else{q.append(c)}
   const empty=value===null||value===undefined;
@@ -860,18 +876,25 @@ function renderInvestigation(payload,deliveryId){
   const head=mkel('div',undefined,'invhead');
   head.append(mkel('h3','Why this delivery is in jeopardy'));
   const pills=mkel('div',undefined,'pillrow');
-  pills.append(mkel('span','verdict: '+(gate.verdict||'unknown'),'mini warn'));
-  pills.append(mkel('span','decision: '+(r.decision_source||'unknown'),'mini ok'));
-  pills.append(mkel('span','class: '+(r.classification_source||'unknown'),'mini ok'));
-  pills.append(mkel('span',r.observability_source||'unknown','mini'));
-  pills.append(mkel('span',r.model||'unknown','mini'));
-  pills.append(mkel('span','human required','mini warn'));
+  const pill=(text,cls,tipText)=>{
+    const el=mkel('span',text,cls);
+    el.append(info(tipText,'below'));
+    pills.append(el);
+  };
+  pill('verdict: '+(gate.verdict||'unknown'),'mini warn','The answer to the only question that matters: is this delivery going to miss its date. A plain function decided it, before any model was asked anything.');
+  pill('decision: '+(r.decision_source||'unknown'),'mini ok','Who decided the verdict. It says deterministic_gate because arithmetic decided, not a model. If this ever said anything else, the guarantee would be gone.');
+  pill('class: '+(r.classification_source||'unknown'),'mini ok','How the failure was identified. It says deterministic_stderr_classifier because the answer came from what FFmpeg printed, not from the fault that was set up. An earlier build read the answer key and scored a hundred percent while measuring nothing.');
+  pill(r.observability_source||'unknown','mini','Where the evidence came from. Every reading below travelled through the official Grafana MCP server, not through a private shortcut.');
+  pill(r.model||'unknown','mini','The Google model that read the evidence and wrote the explanations below. It corroborates; it cannot decide.');
+  pill('human required','mini warn','No action follows from this automatically. Whatever the agents suggest, a person has to approve it before anything changes.','');
   head.append(pills);box.append(head);
 
   const grow=mkel('div',undefined,'gaterow');
   (gate.thresholds||[]).forEach(t=>{
     const c=mkel('div',undefined,'gcell');
-    c.append(mkel('div',t.name.replace(/_/g,' '),'gname'));
+    const gname=mkel('div',t.name.replace(/_/g,' '),'gname');
+    gname.append(info(GATE_TIP[t.name]||'One of the conditions the gate checks.'));
+    c.append(gname);
     const v=mkel('div',undefined,'gval');
     v.append(mkel('span',t.passed?'✓':'·','tick'+(t.passed?'':' no')));
     v.append(mkel('span',t.passed?'met':'not met'));
@@ -966,7 +989,9 @@ function renderInvestigation(payload,deliveryId){
       grid.append(c);
     });
     const total=mkel('div',undefined,'costcell total');
-    total.append(mkel('div','investigation total','costname'));
+    const totalName=mkel('div','investigation total','costname');
+    totalName.append(info('What this one investigation cost in tokens. It is recorded as ordinary telemetry and read back through the same Grafana server the agents use, so the agents are watched by the stack they are watching.','right'));
+    total.append(totalName);
     total.append(mkel('div',(usage.input_tokens+usage.output_tokens).toLocaleString(),'costbig'));
     total.append(mkel('small','tokens on '+(r.model||'gemini')));
     grid.append(total);
@@ -1185,7 +1210,11 @@ async function loadMcpCoverage(){
   (inv.requirement_coverage||[]).forEach(c=>{
     const met=c.status==='covered';
     const row=mkel('div',undefined,'cap'+(met?'':' no'));
-    row.append(mkel('div',met?'✓':'✗','mark'));
+    const mark=mkel('div',met?'✓':'✗','mark');
+    mark.append(info(met
+      ? 'The partner requirement asks for this and SLATE does it. The tool named beside it is the one that answers it, and the live check above confirmed the server really offers that tool.'
+      : 'The requirement asks for this and SLATE does not do it. The reason is beside it rather than left out, because a gap you can see is worth more than one you cannot.'));
+    row.append(mark);
     const body=mkel('div');
     body.append(mkel('div',c.capability,'ctext'));
     const meta=mkel('div',undefined,'cmeta');
@@ -1239,7 +1268,9 @@ async function loadPresets(){
       const card=mkel('div',undefined,'preset');
       card.append(mkel('h4',p.name));
       card.append(mkel('div',p.demonstrates,'what'));
-      card.append(mkel('div',p.expect,'expect'));
+      const expect=mkel('div',p.expect,'expect');
+      expect.append(info('What this scenario should produce if the system is working. Written down before you press anything, so you can check the result against it rather than take our word for it.'));
+      card.append(expect);
       card.append(mkel('div',p.detail,'detail'));
       const row=mkel('div',undefined,'row');
       const load=mkel('button','Load','primary');
@@ -1454,10 +1485,15 @@ $('#panelButton').onclick=async()=>{
     const head=mkel('div',undefined,'invhead');
     head.append(mkel('h3','What the chart shows'));
     const pills=mkel('div',undefined,'pillrow');
-    pills.append(mkel('span',x.tool,'mini ok'));
-    pills.append(mkel('span','official mcp grafana','mini'));
-    pills.append(mkel('span',x.model,'mini'));
-    pills.append(mkel('span','decision: '+x.decision_source,'mini ok'));
+    const ppill=(text,cls,tipText)=>{
+      const el=mkel('span',text,cls);
+      el.append(info(tipText,'below'));
+      pills.append(el);
+    };
+    ppill(x.tool,'mini ok','The Grafana tool that drew this. Grafana rendered the same panel a supervisor looks at, as an image, and the MCP server carried the picture back.');
+    ppill('official mcp grafana','mini','Not a screenshot and not our own chart library. This came out of Grafana itself, through the official server.');
+    ppill(x.model,'mini','Gemini was given the image and asked what it shows. It is reading a picture, which is a different thing from reading numbers.');
+    ppill('decision: '+x.decision_source,'mini ok','The reading below is commentary and nothing more. The verdict was already decided by arithmetic, and nothing the model says about this picture can change it.');
     head.append(pills);wrap.append(head);
     if(x.image_data_uri){
       const fig=mkel('div',undefined,'evid');
