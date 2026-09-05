@@ -52,6 +52,12 @@ REQUIRED = (
     ("contractual deliveries", "the summary bar is missing"),
     ('class="tool"', "the Grafana MCP tool inventory never rendered"),
     ("deliberately not used", "the declined-capabilities panel never rendered"),
+    # The sticky bar's height is measured at runtime and written onto <html> as
+    # --navh. Every anchor's scroll-margin is derived from it, so if this is
+    # missing, every navbar link lands underneath the bar. It was a hardcoded
+    # guess before, and the rule matched only <section>, so two of the seven
+    # links were landing wrong.
+    ("--navh:", "the sticky bar height was never measured, so anchors land under it"),
 )
 
 def rendered_only(dom: str) -> str:

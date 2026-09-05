@@ -49,8 +49,14 @@
     .navlinks a.here{color:var(--paper);background:var(--ink)}
     :root[data-theme="dark"] .navlinks a.here{color:var(--paper)}
     @media(min-width:900px){.navlinks{order:0;width:auto;border-top:0;padding-top:0;margin-top:0}}
-    section[id]{scroll-margin-top:104px}
-    @media(min-width:900px){section[id]{scroll-margin-top:76px}}
+    /* Anchor targets have to clear the sticky bar. Two things were wrong here:
+       the rule only matched <section>, so #byo and #board, which are divs, landed
+       underneath the bar; and the offset was a hardcoded guess that was wrong
+       whenever the bar wrapped to two rows. --navh is measured from the bar
+       itself. This also fixes the scrollIntoView calls, which honour
+       scroll-margin too and were landing just as badly. */
+    html{scroll-behavior:smooth}
+    [id]{scroll-margin-top:calc(var(--navh, 96px) + 16px)}
     .navtools{display:flex;gap:8px;align-items:center}
     .mode{display:flex;border:1px solid var(--line);border-radius:99px;padding:3px;background:var(--panel)}
     .mode button{border:0;border-radius:99px;background:transparent;padding:7px 13px;color:var(--muted)}
@@ -563,6 +569,17 @@ const $=s=>document.querySelector(s);
 const GRAFANA='https://35-255-68-247.sslip.io';
 const DASHBOARD=GRAFANA+'/d/slate-delivery-slo/slate-c2b7-contractual-delivery-slo?kiosk';
 $('#grafanaLink').href=DASHBOARD;
+
+/* ---------- sticky bar height ---------- */
+// Measured, not assumed: the bar is one row on a wide screen and two when the
+// links wrap, and every anchor lands wrong if this is guessed.
+function syncNavOffset(){
+  const nav=document.querySelector('nav');
+  if(nav) document.documentElement.style.setProperty('--navh', nav.offsetHeight+'px');
+}
+syncNavOffset();
+addEventListener('resize',syncNavOffset);
+addEventListener('load',syncNavOffset);
 
 /* ---------- theme + reading mode ---------- */
 try{ if(localStorage.getItem('slate-theme')==='dark') setTheme('dark'); }catch(e){}
