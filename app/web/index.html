@@ -345,6 +345,14 @@
       h1{font-size:2.5rem}
       .q{grid-template-columns:1fr;gap:.3rem}
       .actions button{flex:1 1 auto}
+      /* Grid and flex children default to min-width:auto, which lets long
+         delivery ids and monospace status lines set an intrinsic minimum wider
+         than the column. These are defensive; they did not close the remaining
+         ~80px the layout reports at 390px, which is empty gutter that
+         body{overflow-x:hidden} makes unreachable and invisible. */
+      .card,.preset,.presets>*,.board article{min-width:0}
+      .card>*,.preset>*{min-width:0}
+      .expect,.card .value,.mono,.snippet{overflow-wrap:anywhere}
     }
     @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
   </style>
