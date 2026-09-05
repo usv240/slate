@@ -58,3 +58,28 @@ def test_no_em_dash_reaches_the_page_or_anything_it_renders():
         if "\u2014" in line or "&mdash;" in line
     ]
     assert not offenders, f"em dash on a user-visible surface: {offenders}"
+
+
+def test_every_element_id_is_unique_and_every_nav_link_resolves():
+    """A duplicate id is silent, and it cost us the whole page once.
+
+    Adding `id="board"` to a section shadowed the existing `<div id="board">`,
+    so `document.getElementById` returned the section and the board renderer
+    called `replaceChildren()` on it, wiping the presets and the ladder builder.
+    Nothing threw and every unit test stayed green; only the browser check saw
+    it. This makes the same mistake fail in a plain test run.
+    """
+
+    import re
+    from pathlib import Path
+
+    page = (Path(__file__).resolve().parents[1] / "app" / "web" / "index.html").read_text(
+        encoding="utf-8"
+    )
+    ids = re.findall(r'\sid="([^"]+)"', page)
+    duplicates = sorted({value for value in ids if ids.count(value) > 1})
+    assert not duplicates, f"duplicate element ids: {duplicates}"
+
+    anchors = [target for target in re.findall(r'href="#([^"]+)"', page)]
+    unresolved = [target for target in anchors if ids.count(target) != 1]
+    assert not unresolved, f"in-page links with no unique target: {unresolved}"

@@ -37,8 +37,20 @@
     :focus-visible{outline:2px solid var(--ok);outline-offset:2px}
     .shell{max-width:1180px;width:100%;margin:auto;padding:24px}
 
-    nav{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding:10px 0 22px}
-    .mark{font-weight:900;letter-spacing:.22em;font-size:.9rem}
+    /* Sticky so the page stays navigable from anywhere. The negative margin
+       lets the bar's background span the shell's padding, otherwise content
+       scrolls past in the gutters beside it. */
+    nav{position:sticky;top:0;z-index:40;display:flex;justify-content:space-between;align-items:center;gap:12px 18px;flex-wrap:wrap;border-bottom:1px solid var(--line);background:var(--paper);margin:-24px -24px 0;padding:14px 24px 12px}
+    .mark{font-weight:900;letter-spacing:.22em;font-size:.9rem;color:var(--ink);text-decoration:none;white-space:nowrap}
+    .mark:hover,.mark:focus-visible{color:var(--ok)}
+    .navlinks{display:flex;gap:2px;flex-wrap:wrap;order:3;width:100%;border-top:1px solid var(--line);padding-top:9px;margin-top:2px}
+    .navlinks a{font-size:.79rem;color:var(--muted);text-decoration:none;padding:5px 10px;border-radius:99px;white-space:nowrap}
+    .navlinks a:hover,.navlinks a:focus-visible{color:var(--ink);background:var(--panel)}
+    .navlinks a.here{color:var(--paper);background:var(--ink)}
+    :root[data-theme="dark"] .navlinks a.here{color:var(--paper)}
+    @media(min-width:900px){.navlinks{order:0;width:auto;border-top:0;padding-top:0;margin-top:0}}
+    section[id]{scroll-margin-top:104px}
+    @media(min-width:900px){section[id]{scroll-margin-top:76px}}
     .navtools{display:flex;gap:8px;align-items:center}
     .mode{display:flex;border:1px solid var(--line);border-radius:99px;padding:3px;background:var(--panel)}
     .mode button{border:0;border-radius:99px;background:transparent;padding:7px 13px;color:var(--muted)}
@@ -292,8 +304,16 @@
 </head>
 <body>
 <main class="shell">
-  <nav>
-    <div class="mark">SLATE / DELIVERY CONTROL</div>
+  <nav id="top">
+    <a class="mark" href="/">SLATE / DELIVERY CONTROL</a>
+    <div class="navlinks">
+      <a href="#deliveries">Board</a>
+      <a href="#panel">Panel read</a>
+      <a href="#blindspot">Blind spot</a>
+      <a href="#partner">Grafana tools</a>
+      <a href="#query">Your query</a>
+      <a href="#boundary">Boundary</a>
+    </div>
     <div class="navtools">
       <div class="mode" role="group" aria-label="Reading mode">
         <button id="plain" class="active" type="button" aria-pressed="true">Plain</button>
@@ -352,7 +372,7 @@
     </div>
   </section>
 
-  <section>
+  <section id="deliveries">
     <div class="section-head">
       <div><div class="eyebrow">Live control board</div><h2>Every title. One immovable date.</h2></div>
       <span class="quiet" id="updated">Waiting for API</span>
@@ -390,7 +410,7 @@
     <pre class="proof" id="proof" hidden aria-live="polite"></pre>
   </section>
 
-  <section>
+  <section id="panel">
     <div class="section-head">
       <div><div class="eyebrow">Closing the loop</div><h2>The agent reads the supervisor's chart.</h2></div>
       <button class="secondary" id="panelButton" type="button">Render the panel through MCP</button>
@@ -400,7 +420,7 @@
     <div id="panelOut"></div>
   </section>
 
-  <section>
+  <section id="blindspot">
     <div class="section-head">
       <div><div class="eyebrow">Why this is not just monitoring</div><h2>What a failure alert cannot see.</h2></div>
       <div class="keyrow" style="margin:0">
@@ -414,7 +434,7 @@
     <div class="buys" id="buyOut" hidden></div>
   </section>
 
-  <section>
+  <section id="partner">
     <div class="section-head">
       <div><div class="eyebrow">Partner integration</div><h2>Seven tools. Three of them unusual.</h2></div>
       <span class="quiet" id="mcpUpdated"></span>
@@ -427,7 +447,7 @@
     <div class="declines" id="mcpDeclines"></div>
   </section>
 
-  <section>
+  <section id="query">
     <div class="section-head">
       <div><div class="eyebrow">Bring your own query</div><h2>The MCP path is general, not three canned calls.</h2></div>
     </div>
@@ -441,7 +461,7 @@
     <pre class="proof" id="promqlOut" hidden aria-live="polite"></pre>
   </section>
 
-  <section class="gate">
+  <section class="gate" id="boundary">
     <div>
       <div class="eyebrow">Decision boundary</div>
       <h2>The model cannot move the line.</h2>
@@ -1310,6 +1330,30 @@ $('#create').onsubmit=async e=>{
   if(!r.ok)showProof('COULD NOT CREATE DELIVERY',await r.json());
   else await load();
 };
+
+/* ---------- navbar ---------- */
+// The bar should orient, not just link: it marks the section actually on
+// screen. Degrades to plain anchors wherever IntersectionObserver is missing.
+(function(){
+  const links=Array.prototype.slice.call(document.querySelectorAll('.navlinks a'));
+  if(!links.length||!('IntersectionObserver' in window))return;
+  const byId=new Map(links.map(a=>[a.getAttribute('href').slice(1),a]));
+  const targets=[];
+  byId.forEach((a,id)=>{const el=document.getElementById(id); if(el)targets.push(el)});
+  if(!targets.length)return;
+  const seen=new Map();
+  let current=null;
+  const io=new IntersectionObserver(entries=>{
+    entries.forEach(e=>seen.set(e.target.id,e.intersectionRatio));
+    let best=null,ratio=0;
+    seen.forEach((r,id)=>{if(r>ratio){ratio=r;best=id}});
+    if(!best||best===current)return;
+    if(current&&byId.get(current))byId.get(current).classList.remove('here');
+    byId.get(best).classList.add('here');
+    current=best;
+  },{rootMargin:'-90px 0px -50% 0px',threshold:[0,.2,.5,1]});
+  targets.forEach(t=>io.observe(t));
+})();
 
 load();
 </script>
