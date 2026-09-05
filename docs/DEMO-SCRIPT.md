@@ -1,4 +1,4 @@
-# Demo video script — 2:45
+# Demo video script — 2:46
 
 Hard limit 3:00; only the first 3:00 is evaluated.
 
@@ -13,12 +13,14 @@ that sentence.
 words at 165 wpm, takes the measured execution time declared in each beat, and costs every beat
 at `max(talking, waiting)` — because talking over a wait is free, and you cannot talk for forty
 seconds over a five second click. Re-run it after any edit to the narration — it has twice caught
-a runtime the author had estimated wrong by hand. Current estimate: **2:45, fifteen seconds of
+a runtime the author had estimated wrong by hand. Current estimate: **2:46, fourteen seconds of
 margin.** `--fix-headings` renumbers the beats from those same costs, so the timestamps cannot
 drift out of step with the narration.
 
 The riskiest beat is the agent investigation at 47s: it is the only one where the product, not
-you, sets the pace.
+you, sets the pace. **The remaining margin is protection, not space to fill** — it absorbs a slow
+agent call, a slower delivery of a line, or a scroll that takes a moment. Anything past 3:00 is
+simply not evaluated.
 
 ## How this script is built
 
@@ -103,20 +105,21 @@ work no longer fits before the deadline."**
 
 ---
 
-## 0:48–1:06 · Three detectors, same run
+## 0:48–1:07 · Three detectors, same run
 <!-- exec: 2 -->
 
 > **DO:** The comparison renders underneath on its own.
 > **POINT:** Each row in turn — `any_failure`, then `deadline_passed`, then `slate_gate`.
 
 **"Here's what three detectors say about that exact run. A failure alert: silent — nothing failed,
-and it stays silent until the date goes by. A deadline check: silent, and useless. SLATE fired
-before the deadline, while there was still time to act. That's the difference."**
+and it stays silent until the date goes by. A deadline check: silent — because the deadline
+hasn't passed yet. SLATE fired before the deadline, while there was still time to act. That's the
+difference."**
 
 
 ---
 
-## 1:06–1:54 · The agents, on real evidence
+## 1:07–1:56 · The agents, on real evidence
 <!-- exec: 47 -->
 
 > **DO:** Scroll to the board, find the `at_risk` codec-fault delivery, press **Ask ADK agents**.
@@ -136,7 +139,7 @@ nothing."**
 
 ---
 
-## 1:54–2:14 · Propose, approve, recover
+## 1:56–2:16 · Propose, approve, recover
 <!-- exec: 10 -->
 
 > **DO:** Scroll to the remediation options. Press **Approve** on the recommended one. Then press
@@ -151,7 +154,7 @@ recovered before its date."**
 
 ---
 
-## 2:14–2:35 · Grafana draws it, Gemini reads it
+## 2:16–2:37 · Grafana draws it, Gemini reads it
 <!-- exec: 18 -->
 
 > **DO:** Press **Render the panel through MCP** *now*, then immediately scroll up to the
@@ -170,14 +173,14 @@ same chart the supervisor is looking at."**
 
 ---
 
-## 2:35–2:44 · Close
+## 2:37–2:46 · Close
 <!-- exec: 0 -->
 
 > **DO:** Stay on the panel reading. Do not scroll further.
 > **POINT:** Nothing. Let it sit.
 
-**"Apache-2.0, repo and app in the description. SLATE — treat a date you can't move like the
-objective it already is."**
+**"Apache-2.0, repo and app in the description. SLATE — know a delivery will miss while there's
+still time to save it."**
 
 
 ---
