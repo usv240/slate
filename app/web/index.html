@@ -447,7 +447,7 @@
     <div class="byo" id="byo">
       <div class="eyebrow">Bring your own</div>
       <h3>None of this is our fixture.</h3>
-      <p class="plain">Three ways to drive SLATE with something we did not choose. Load a preset below, open the builder and change the encode ladder, or type your own PromQL further down the page.</p>
+      <p class="plain">Three ways to drive SLATE with something we did not choose. Load a preset below, open the builder and change the encode ladder, or send <a href="#query">your own PromQL</a> through the same MCP server the agents use.</p>
       <p class="technical">A preset is <em>exactly</em> the body <code>POST /v1/deliveries</code> accepts: download the JSON, post it back unchanged, and you get the same record. The builder rows are the FFmpeg arguments themselves, so asking for <code>libx265</code> at 3840x2160 encodes that; asking for something out of range returns a 422 rather than a silent clamp.</p>
     </div>
     <div class="presets" id="presets"></div>

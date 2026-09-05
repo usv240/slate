@@ -1,4 +1,4 @@
-# Demo video script: 2:46
+# Demo video script: 2:44
 
 Hard limit 3:00; only the first 3:00 is evaluated.
 
@@ -13,12 +13,13 @@ that sentence.
 words at 165 wpm, takes the measured execution time declared in each beat, and costs every beat
 at `max(talking, waiting)`, because talking over a wait is free, and you cannot talk for forty
 seconds over a five second click. Re-run it after any edit to the narration; it has twice caught
-a runtime the author had estimated wrong by hand. Current estimate: **2:46, fourteen seconds of
+a runtime the author had estimated wrong by hand. Current estimate: **2:44, sixteen seconds of
 margin.** `--fix-headings` renumbers the beats from those same costs, so the timestamps cannot
 drift out of step with the narration.
 
-The riskiest beat is the agent investigation at 47s: it is the only one where the product, not
-you, sets the pace. **The remaining margin is protection, not space to fill**: it absorbs a slow
+The riskiest stretch is the agent investigation, beats 4 to 6: it runs about 47 seconds and it
+is the only place where the product, not you, sets the pace. Beat 5 exists to spend that wait
+rather than stand in it. **The remaining margin is protection, not space to fill**: it absorbs a slow
 agent call, a slower delivery of a line, or a scroll that takes a moment. Anything past 3:00 is
 simply not evaluated.
 
@@ -34,14 +35,17 @@ is tagged with the criterion it exists to earn. Nothing is here for decoration.
 | 2. The miss with zero failures | **Impact**: the strongest thing SLATE has |
 | 3. Three detectors disagree | **Impact**: a before/after that changes a decision |
 | 4. Agents on real evidence | **Tech**: partner depth, in plain language |
-| 5. Propose → approve → recover | **Design**: a complete product loop, not a proof of concept |
-| 6. Grafana draws, Gemini reads | **Idea**: the non-obvious partner use |
-| 7. Close | Trust |
+| 5. Drive it yourself, while they run | **Idea**: answers "is this canned?" at zero time cost |
+| 6. The diagnosis | **Tech**: the answer came from the evidence, not from us |
+| 7. Propose → approve → recover | **Design**: a complete product loop, not a proof of concept |
+| 8. Grafana draws, Gemini reads | **Idea**: the non-obvious partner use |
+| 9. Close | Trust |
 
 **Two rules that keep this landing.**
 
 1. *The waits are the point, not dead air.* The miss proof takes ~28s and the investigation ~47s.
-   Narration over an existing wait is free time. Do not cut either; the wait is the proof it is
+   Narration over an existing wait is free time, and beat 5 goes further: it does a whole second
+   demonstration inside the first one's wait. Do not cut either; the wait is the proof it is
    really running.
 2. *Sell the product, do not defend a dissertation.* The repository is exhaustively honest about
    what is simulated and what is not claimed. On camera that is **one sentence**. No more.
@@ -62,24 +66,25 @@ afterwards so the recording opens clean.
 
 - Browser at 1440×900, zoom 100%, signed out, no extensions visible.
 - One tab. Everything in this script is on the one page.
+- **Use the navbar, not the scrollbar.** Board, Bring your own, Grafana MCP and Blind spot are one
+  click each. Beats 4 to 6 depend on moving quickly while the agents are still working.
 - Do a silent dry run first. The buttons are the script.
 
 ---
 
-## 0:00–0:18 · The problem, and what missing it costs
+## 0:00–0:16 · The problem, and what missing it costs
 <!-- exec: 0 -->
 
 > **DO:** Board on screen, three green titles. Do not scroll, do not touch anything.
 > **POINT:** The contract dates on the three cards.
 
-**"A delivery date in post-production is contractual. Miss it and a release can slip, or a
-broadcaster handoff can be missed. But nobody finds out they're going to miss it until they miss
-it, because everything upstream watches for things breaking, not for whether the work still
-fits."**
+**"A delivery date in post-production is contractual. Miss it and a release slips. But nobody
+finds out they're going to miss it until they miss it, because everything upstream watches for
+things breaking, not for whether the work still fits."**
 
 ---
 
-## 0:18–0:48 · The miss with zero failures  ← the most important 30 seconds
+## 0:16–0:45 · The miss with zero failures  ← the most important 30 seconds
 <!-- exec: 28 -->
 
 > **DO:** Scroll to **"What a failure alert cannot see"**, press **Prove it: a miss with zero
@@ -105,56 +110,80 @@ work no longer fits before the deadline."**
 
 ---
 
-## 0:48–1:07 · Three detectors, same run
+## 0:45–1:08 · Three detectors, same run
 <!-- exec: 2 -->
 
-> **DO:** The comparison renders underneath on its own.
-> **POINT:** Each row in turn: `any_failure`, then `deadline_passed`, then `slate_gate`.
+> **DO:** The comparison and the green **What the warning buys you** panel both render underneath
+> on their own. Do not click anything.
+> **POINT:** Each detector row in turn, then the two rows of the green panel.
 
-**"Here's what three detectors say about that exact run. A failure alert: silent. Nothing failed,
-and it stays silent until the date goes by. A deadline check: silent, because the deadline
-hasn't passed yet. SLATE fired before the deadline, while there was still time to act. That's the
-difference."**
+**"Here's what three detectors say about that exact run. A failure alert: silent. Nothing failed.
+A deadline check: silent, because the deadline hasn't passed. SLATE fired while there was still
+time to act."**
+
+> *Point at the green panel.*
+
+**"And this is what that time is worth. Do nothing, it misses by eight seconds. Approve one more
+encoder, it lands with six to spare."**
 
 
 ---
 
-## 1:07–1:56 · The agents, on real evidence
-<!-- exec: 47 -->
+## 1:08–1:29 · The agents, on real evidence
+<!-- exec: 20 -->
 
-> **DO:** Scroll to the board, find the `at_risk` codec-fault delivery, press **Ask ADK agents**.
-> Narrate over the wait.
-> **POINT:** While it runs: the PromQL, LogQL and Tempo rows as they appear.
+> **DO:** Click **Board** in the navbar, find the `at_risk` codec-fault delivery, press
+> **Ask ADK agents**. Leave it running and keep talking.
+> **POINT:** The PromQL, LogQL and Tempo rows as they appear.
 
 **"Now the other half. This one did fail, a missing encoder. Three Google agents investigate it,
 and every observation goes through the official Grafana MCP server: the metrics, logs, and trace
 for this exact delivery. The diagnosis has to come from that evidence."**
 
-> *Investigation lands.*
-> **POINT:** The quoted stderr inside the Diagnose block.
+---
 
-**"There. It's quoting FFmpeg's actual error, 'Unknown encoder', not an answer we planted in
-the scenario. An earlier build of this did plant it, scored a hundred percent, and was measuring
-nothing."**
+## 1:29–1:46 · While it runs: drive it yourself
+<!-- exec: 15 -->
+
+> **DO:** The investigation is still running. Click **Bring your own** in the navbar, then the
+> **your own PromQL** link inside that block, pick a query chip and press **Run**. Two clicks.
+> **POINT:** The preset row and the ladder builder, then the raw MCP response.
+>
+> *This beat exists because "is it a canned demo?" is the first thing a judge thinks. It costs
+> nothing: the investigation is running underneath the whole time.*
+
+**"While that runs. None of this is our fixture. Three presets, and a builder whose rows are the
+actual FFmpeg arguments. And your own query goes through the same official MCP server the agents
+use. That's the server's raw answer, not ours."**
 
 ---
 
-## 1:56–2:16 · Propose, approve, recover
+## 1:46–1:59 · The diagnosis
+<!-- exec: 12 -->
+
+> **DO:** Click **Board** in the navbar. The investigation has landed.
+> **POINT:** The quoted stderr inside the Diagnose block.
+
+**"And there it is. It's quoting FFmpeg's actual error, 'Unknown encoder', not an answer we
+planted. An earlier build did plant it, scored a hundred percent, and was measuring nothing."**
+
+---
+
+## 1:59–2:13 · Propose, approve, recover
 <!-- exec: 10 -->
 
 > **DO:** Scroll to the remediation options. Press **Approve** on the recommended one. Then press
 > **Run real pipeline** on that delivery.
 > **POINT:** The schedule cost on each option, then the status pill flipping to `recovered`.
 
-**"Now SLATE doesn't just raise an alarm. It gives the operator four actions the system can
-actually carry out, each with its schedule cost. The agent recommends, the human approves, and
-that approval is what writes the Grafana annotation, not the agent. Re-run, and the delivery is
+**"Four actions the system can actually carry out, each costed. The agent recommends, the human
+approves, and that approval is what writes the Grafana annotation. Re-run, and the delivery is
 recovered before its date."**
 
 
 ---
 
-## 2:16–2:37 · Grafana draws it, Gemini reads it
+## 2:13–2:34 · Grafana draws it, Gemini reads it
 <!-- exec: 18 -->
 
 > **DO:** Press **Render the panel through MCP** *now*, then immediately scroll up to the
@@ -173,7 +202,7 @@ same chart the supervisor is looking at."**
 
 ---
 
-## 2:37–2:46 · Close
+## 2:34–2:43 · Close
 <!-- exec: 0 -->
 
 > **DO:** Stay on the panel reading. Do not scroll further.
@@ -191,8 +220,12 @@ Do not re-record from the top. Each of these is recoverable in one sentence:
 
 - **A wave runs slow and the gate opens on wave two.** Say *"there it is, a wave early"* and carry
   on. The point is that it opened with zero failures, not which wave it was.
-- **The investigation runs past 47s.** Cut the list of seven surfaces in beat 6 down to
-  "metrics, logs, traces and alerts". That is your slack.
+- **The investigation runs past 47s.** Stay in beat 5 and say one more line about the builder.
+  It is the one beat you can stretch, because nothing there is on a clock.
+- **The MCP query in beat 5 errors.** Say *"and that is the server's own error text, not ours"*
+  and move on. A raw error is still the raw MCP path, which is the point of the beat.
+- **You run long.** Cut the list of seven surfaces in beat 8 down to "metrics, logs, traces and
+  alerts". That is your slack.
 - **The panel render fails.** Say *"that one needs the renderer and it isn't answering, the
   reading is commentary anyway, the gate already decided"*, then go to the close. It costs the
   Idea beat, not the video.
@@ -203,7 +236,10 @@ Do not re-record from the top. Each of these is recoverable in one sentence:
 - [ ] Miss proof pressed live; **failure count visibly zero across all three waves**
 - [ ] **"Nothing failed, but the work no longer fits"** said out loud on wave three
 - [ ] All three detector rows legible
+- [ ] **Green "what the warning buys you" panel on screen, both rows read out**
 - [ ] Agent investigation pressed live, not cut
+- [ ] **Presets and the ladder builder shown while the agents are still working**
+- [ ] **One query run through MCP live, raw response visible**
 - [ ] **Quoted FFmpeg stderr legible on screen**
 - [ ] Typed remediation options with schedule costs visible
 - [ ] Approval pressed on camera, `recovered` shown
