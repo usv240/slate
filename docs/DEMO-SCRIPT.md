@@ -93,16 +93,18 @@ things breaking, not for whether the work still fits."**
 ## 0:16–0:45 · The miss with zero failures  ← the most important 30 seconds
 <!-- exec: 28 -->
 
-> **DO:** Scroll to **"What a failure alert cannot see"**, press **Prove it: a miss with zero
-> failures**. Then keep talking. Do not cut the waves.
-> **POINT:** The failure count as each wave lands. It stays at zero.
+> **DO:** Click **Blind spot** in the navbar. Press **Prove it: a miss with zero failures**.
+> Then take your hands off the mouse and talk. It runs three waves, about thirty seconds. Do not
+> cut them.
+> **POINT:** The status line directly under the button as each wave lands. The words you want are
+> **0 failures**, and they stay there.
 
 **"So watch this. Eight renditions, a fifty-second window, and I'm injecting no fault at all.
 Every encode is going to pass."**
 
 > *Wave 1 lands.*
 
-**"Wave one. Nothing failed. Thirty-five seconds of work left, forty-three of window. Fine."**
+**"Wave one. Nothing failed. Plenty of window left. Fine."**
 
 > *Wave 2 lands.*
 
@@ -110,18 +112,21 @@ Every encode is going to pass."**
 
 > *Wave 3 lands. Status flips to at risk.*
 
-**"Wave three. Twenty-eight seconds of work, nineteen seconds of window. Nothing failed, but the
-work no longer fits before the deadline."**
+**"Wave three. Now there is more work left than there is window. Nothing failed, but the work no
+longer fits before the deadline."**
+
+> *Read nothing off a rehearsal. The seconds differ every run; the relationship never does.*
 
 
 ---
 
-## 0:45–1:08 · Three detectors, same run
+## 0:45–1:07 · Three detectors, same run
 <!-- exec: 2 -->
 
-> **DO:** The comparison and the green **What the warning buys you** panel both render underneath
-> on their own. Do not click anything.
-> **POINT:** Each detector row in turn, then the two rows of the green panel.
+> **DO:** Nothing at all. When the third wave lands the page scrolls itself to the detector
+> comparison, and the green **What the warning buys you** panel renders under it. Keep still.
+> **POINT:** The card headed **Invisible miss**, then its three rows top to bottom:
+> `any_failure`, `deadline_passed`, `slate_gate`. Then move down to the green panel.
 
 **"Here's what three detectors say about that exact run. A failure alert: silent. Nothing failed.
 A deadline check: silent, because the deadline hasn't passed. SLATE fired while there was still
@@ -138,14 +143,15 @@ it lands with seconds to spare."**
 
 ---
 
-## 1:08–1:29 · The agents, on real evidence
+## 1:07–1:29 · The agents, on real evidence
 <!-- exec: 20 -->
 
 > **DO:** Click **Board** in the navbar. The board is newest first, so the card you just created
 > in the miss proof is on top. The one you want is **"Judge proof: premiere package"**, the card
 > showing `codec_fault`. Press **Ask ADK agents** on *that* card, then leave it running and keep
-> talking.
-> **POINT:** The PromQL, LogQL and Tempo rows as they appear.
+> talking. The investigation panel opens directly underneath the board.
+> **POINT:** The block headed **"Evidence the agents were bound to"**, and its PromQL, LogQL and
+> Tempo rows as they fill in.
 
 **"Now the other half. This one did fail, a missing encoder. Three Google agents investigate it,
 and every observation goes through the official Grafana MCP server: the metrics, logs, and trace
@@ -156,9 +162,13 @@ for this exact delivery. The diagnosis has to come from that evidence."**
 ## 1:29–1:46 · While it runs: drive it yourself
 <!-- exec: 15 -->
 
-> **DO:** The investigation is still running. Click **Bring your own** in the navbar, then the
-> **your own PromQL** link inside that block, pick a query chip and press **Run**. Two clicks.
-> **POINT:** The preset row and the ladder builder, then the raw MCP response.
+> **DO:** The investigation is still running; leave it alone. Click **Bring your own** in the
+> navbar. Then click the **your own PromQL** link in that paragraph, click any one of the query
+> chips, and press **Run through MCP**.
+> **Do not press Load on a preset.** Loading one jumps the page back to the board and you lose
+> the beat.
+> **POINT:** First the three preset cards and the **"Build your own delivery"** line under them,
+> then the raw response that appears below the query box.
 >
 > *This beat exists because "is it a canned demo?" is the first thing a judge thinks. It costs
 > nothing: the investigation is running underneath the whole time.*
@@ -172,8 +182,9 @@ use. That's the server's raw answer, not ours."**
 ## 1:46–1:59 · The diagnosis
 <!-- exec: 12 -->
 
-> **DO:** Click **Board** in the navbar. The investigation has landed.
-> **POINT:** The quoted stderr inside the Diagnose block.
+> **DO:** Click **Board** in the navbar. The investigation has landed underneath it.
+> **POINT:** Inside **"Google ADK agents"**, the **Diagnose** block, and the quoted FFmpeg line
+> within it.
 
 **"And there it is. It's quoting FFmpeg's actual error, 'Unknown encoder', not an answer we
 planted. An earlier build did plant it, scored a hundred percent, and was measuring nothing."**
@@ -183,9 +194,11 @@ planted. An earlier build did plant it, scored a hundred percent, and was measur
 ## 1:59–2:13 · Propose, approve, recover
 <!-- exec: 10 -->
 
-> **DO:** Scroll to the remediation options. Press **Approve** on the recommended one. Then press
-> **Run real pipeline** on that delivery.
-> **POINT:** The schedule cost on each option, then the status pill flipping to `recovered`.
+> **DO:** Stay where you are and move down to the block headed **"Remediate proposed these"**.
+> Press **Approve** on the recommended option. Then, on that same delivery card, press
+> **Run real pipeline**.
+> **POINT:** The schedule cost on each option first, then the status pill on the card turning
+> `recovered`.
 
 **"Four actions the system can actually carry out, each costed. The agent recommends, the human
 approves, and that approval is what writes the Grafana annotation. Re-run, and the delivery is
@@ -197,10 +210,11 @@ recovered before its date."**
 ## 2:13–2:34 · Grafana draws it, Gemini reads it
 <!-- exec: 18 -->
 
-> **DO:** Press **Render the panel through MCP** *now*, then immediately scroll up to the
-> integration section and talk while it renders (~17s).
-> **POINT:** The `7 / 72` tiles: the honest ratio is on screen while you name the seven surfaces.
-> Then scroll back down for the reveal.
+> **DO:** Click **Panel read** in the navbar and press **Render the panel through MCP** straight
+> away. It takes about seventeen seconds, so do not stand and watch it: click **Grafana MCP** in
+> the navbar and deliver the line there. When you finish it, click **Panel read** again.
+> **POINT:** In the Grafana MCP section, the four tiles, and specifically **72** and **7**. Then
+> back on Panel read, the rendered PNG and Gemini's reading side by side.
 
 **"While that renders, the final receiver is simulated, and the page says so. SLATE uses seven
 Grafana MCP tools: metrics, logs, traces, dashboard search, alert rules, annotations and

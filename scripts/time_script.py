@@ -45,7 +45,14 @@ def beats(text: str) -> list[tuple[str, int, float]]:
         heading = section.split("\n", 1)[0].strip()
         if not re.match(r"\d\d?:\d\d", heading):
             continue
-        spoken = re.findall(r'\*\*"(.+?)"\*\*', section, re.S)
+        # Stage directions live in blockquotes and narration does not.
+        # Without this, naming an on-screen heading in a DO line as
+        # **"Diagnose"** counts as something the presenter says, and the
+        # beat is costed for words nobody speaks.
+        narration = chr(10).join(
+            line for line in section.splitlines() if not line.lstrip().startswith(">")
+        )
+        spoken = re.findall(r'\*\*"(.+?)"\*\*', narration, re.S)
         words = sum(len(re.findall(r"[\w'’-]+", block)) for block in spoken)
         exec_match = re.search(r"<!--\s*exec:\s*([\d.]+)\s*-->", section)
         found.append((heading, words, float(exec_match.group(1)) if exec_match else 0.0))
