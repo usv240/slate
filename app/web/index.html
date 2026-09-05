@@ -116,6 +116,20 @@
     .cmpnote{font-size:.8rem;color:var(--muted);line-height:1.55;max-width:80ch}
 
     /* partner integration surface */
+    /* An "i" that explains a number in plain words. The page is full of terms a
+       delivery supervisor knows and nobody else does, and a reader who cannot
+       tell what a figure means cannot tell whether it is impressive. Hover or
+       keyboard focus both work. */
+    .info{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--muted);font:700 .62rem/1 ui-sans-serif,system-ui,sans-serif;font-style:normal;cursor:help;position:relative;vertical-align:middle;margin-left:6px;flex:none;text-transform:none;letter-spacing:0}
+    .info:hover,.info:focus-visible{background:var(--ink);color:var(--paper);border-color:var(--ink);outline:none}
+    .info::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 9px);transform:translateX(-50%);width:max-content;max-width:min(300px,72vw);background:var(--ink);color:var(--paper);padding:9px 12px;border-radius:4px;font:400 .75rem/1.5 Inter,ui-sans-serif,system-ui,sans-serif;text-align:left;letter-spacing:0;text-transform:none;opacity:0;visibility:hidden;transition:opacity .12s ease;z-index:60;pointer-events:none;box-shadow:var(--shadow);white-space:normal}
+    .info:hover::after,.info:focus-visible::after{opacity:1;visibility:visible}
+    .info.right::after{left:auto;right:-4px;transform:none}
+    .info.below::after{bottom:auto;top:calc(100% + 9px)}
+    /* The decision-boundary panel is dark in both themes. */
+    .gate .info{background:transparent;border-color:rgba(255,255,255,.32);color:rgba(255,255,255,.72)}
+    .gate .info:hover,.gate .info:focus-visible{background:#fff;color:#0c1113;border-color:#fff}
+    .gate .info::after{background:#fff;color:#17201d}
     .cover{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin-bottom:14px}
     .cover div{background:var(--panel);padding:14px 16px}
     .cover b{display:block;font:1.7rem/1.15 Georgia,serif;font-variant-numeric:tabular-nums}
@@ -373,10 +387,10 @@
   </header>
 
   <section class="bar">
-    <div class="stat"><b id="total">0</b><span>contractual deliveries</span></div>
-    <div class="stat"><b id="risk">0</b><span>currently at risk</span></div>
-    <div class="stat"><b id="tightest">n/a</b><span>tightest schedule budget</span></div>
-    <div class="stat"><b>Never</b><span>automatic remediation</span></div>
+    <div class="stat"><b id="total">0</b><span>contractual deliveries<span class="info" tabindex="0" role="note" data-tip="How many titles are being tracked. Each one is a set of encoded versions that has to reach a distributor by a date written into a contract." aria-label="What this means: How many titles are being tracked. Each one is a set of encoded versions that has to reach a distributor by a date written into a contract.">i</span></span></div>
+    <div class="stat"><b id="risk">0</b><span>currently at risk<span class="info" tabindex="0" role="note" data-tip="How many of them are now projected to finish after their contractual date. Zero is the normal state, and a delivery can be at risk while nothing has failed." aria-label="What this means: How many of them are now projected to finish after their contractual date. Zero is the normal state, and a delivery can be at risk while nothing has failed.">i</span></span></div>
+    <div class="stat"><b id="tightest">n/a</b><span>tightest schedule budget<span class="info" tabindex="0" role="note" data-tip="The least slack any single delivery has left: time until its date, minus the time the work still needs. Below zero means it is projected to miss." aria-label="What this means: The least slack any single delivery has left: time until its date, minus the time the work still needs. Below zero means it is projected to miss.">i</span></span></div>
+    <div class="stat"><b>Never</b><span>automatic remediation<span class="info right" tabindex="0" role="note" data-tip="No action is ever taken by the model. The agents can propose and explain, but every change to a delivery needs a person to approve it first." aria-label="What this means: No action is ever taken by the model. The agents can propose and explain, but every change to a delivery needs a person to approve it first.">i</span></span></div>
   </section>
 
   <section id="start">
@@ -551,10 +565,11 @@
     </div>
     <div class="equation">
       <span class="pass">AT_RISK</span> requires<br>
-      projected_completion &gt; contractual_date<br>
-      AND positive_burn sustained over 2 windows<br>
-      AND work_remaining &gt; 0<br><br>
-      <span class="pass">AUTO_ACTION = NEVER</span>
+      projected_completion &gt; contractual_date<span class="info" tabindex="0" role="note" data-tip="At the speed this delivery is actually encoding, it will finish after its date. Measured from real runs, not estimated." aria-label="What this means: At the speed this delivery is actually encoding, it will finish after its date. Measured from real runs, not estimated.">i</span><br>
+      AND positive_burn sustained over 2 windows<span class="info" tabindex="0" role="note" data-tip="It has been losing slack for at least two checks in a row, each at least five seconds apart. One bad moment is deliberately not enough to raise an alarm." aria-label="What this means: It has been losing slack for at least two checks in a row, each at least five seconds apart. One bad moment is deliberately not enough to raise an alarm.">i</span><br>
+      AND work_remaining &gt; 0<span class="info" tabindex="0" role="note" data-tip="There is still encoding left to do. A delivery that has finished cannot be at risk, however tight the date was." aria-label="What this means: There is still encoding left to do. A delivery that has finished cannot be at risk, however tight the date was.">i</span><br><br>
+
+      <span class="pass">AUTO_ACTION = NEVER</span><span class="info right" tabindex="0" role="note" data-tip="Nothing here ever acts on its own. The agents propose and explain; a person approves. There is no code path that lets a model change a delivery." aria-label="What this means: Nothing here ever acts on its own. The agents propose and explain; a person approves. There is no code path that lets a model change a delivery.">i</span>
     </div>
   </section>
 
@@ -569,6 +584,26 @@ const $=s=>document.querySelector(s);
 const GRAFANA='https://35-255-68-247.sslip.io';
 const DASHBOARD=GRAFANA+'/d/slate-delivery-slo/slate-c2b7-contractual-delivery-slo?kiosk';
 $('#grafanaLink').href=DASHBOARD;
+
+/* ---------- plain-language help ---------- */
+// The three detectors, in the order a reader meets them.
+const DETECTOR_TIP={
+  any_failure:'The ordinary alert almost every pipeline already has: it fires the moment something breaks. Useful, but it is answering a different question, because a delivery can be lost without anything breaking.',
+  deadline_passed:'The simplest possible check: has the date gone by. Always correct and always useless, because by the time it fires there is nothing left to decide.',
+  slate_gate:'What SLATE adds. It fires while the date is still ahead, when the measured work left no longer fits in the time left. That is the only one of the three that leaves room to act.'
+};
+
+
+// One helper so every explanation on the page is built the same way and the
+// wording lives next to the thing it explains.
+function info(tip,extra){
+  const el=mkel('span','i','info'+(extra?' '+extra:''));
+  el.setAttribute('data-tip',tip);
+  el.setAttribute('tabindex','0');
+  el.setAttribute('role','note');
+  el.setAttribute('aria-label','What this means: '+tip);
+  return el;
+}
 
 /* ---------- sticky bar height ---------- */
 // Measured, not assumed: the bar is one row on a wide screen and two when the
@@ -642,7 +677,9 @@ function sparkline(x){
   end.setAttribute('r','2.8');end.setAttribute('fill',vals[vals.length-1]<0?'var(--bad)':'var(--ok)');
   svg.append(end);
   const wrap=mkel('div',undefined,'sparkwrap');
-  wrap.append(mkel('div','Schedule budget · dashed line is the contract','label'));
+  const sparkLabel=mkel('div','Schedule budget · dashed line is the contract','label');
+  sparkLabel.append(info('Slack over time. Each point is one real pipeline run. The dashed line is zero slack, so a line heading below it is a delivery running out of time.'));
+  wrap.append(sparkLabel);
   wrap.append(svg);
   return wrap;
 }
@@ -660,28 +697,48 @@ async function load(){
   rows.forEach(x=>board.append(card(x)));
 }
 
+// What each status pill actually means, in words a newcomer can act on.
+const STATUS_TIP={
+  queued:'Created, but no encoding has run yet.',
+  running:'Encoding right now.',
+  healthy:'Every version encoded and passed its checks, and the work still fits before the date.',
+  degraded:'Something failed, but the gate has not opened: one failure is not yet evidence that the date is at risk.',
+  at_risk:'The gate has opened. All three conditions are true at once, so this delivery is now projected to finish after its contractual date.',
+  recovered:'It was at risk, a person approved a fix, and it now completes before the date.',
+  failed:'The delivery could not be completed.'
+};
+
 function card(x){
   const el=mkel('article',undefined,'card '+x.status);
   const head=mkel('div');
   head.append(mkel('h3',x.title));
-  head.append(mkel('span',x.status.replace('_',' '),'pill '+x.status));
+  const pill=mkel('span',x.status.replace('_',' '),'pill '+x.status);
+  head.append(pill);
+  head.append(info(STATUS_TIP[x.status]||x.status,'below'));
   el.append(head);
 
   const contract=mkel('div');
-  contract.append(mkel('div','Contract','label'));
+  const contractLabel=mkel('div','Contract','label');
+  contractLabel.append(info('The date this delivery is contractually required to arrive by. It never moves, which is the whole premise: everything else has to fit around it.'));
+  contract.append(contractLabel);
   contract.append(mkel('div',new Date(x.contractual_date).toLocaleString(),'value'));
   const budget=latestBudget(x);
   if(budget!==null){
     const b=mkel('div','budget '+fmtDuration(budget),'label');
     b.style.color=budget<0?'var(--bad)':'var(--muted)';
+    b.append(info('Slack: time left before the date, minus the time the remaining work still needs. Positive means it fits. Negative means it is projected to miss, and the size is how badly.'));
     contract.append(b);
   }
   el.append(contract);
 
   const work=mkel('div');
-  work.append(mkel('div','Specs left','label'));
+  const workLabel=mkel('div','Specs left','label');
+  workLabel.append(info('How many encoded versions still have to be produced, out of the total this delivery asked for. A version that failed still counts as outstanding work.'));
+  work.append(workLabel);
   work.append(mkel('div',`${x.pending_specs} / ${x.specs.length}`,'value'));
-  work.append(mkel('div',`measured p95 ${Number(x.p95_seconds_per_spec).toFixed(2)}s`,'label'));
+  const p95Label=mkel('div',`measured p95 ${Number(x.p95_seconds_per_spec).toFixed(2)}s`,'label');
+  p95Label.append(info('How long one version takes to encode, taken from the runs that have actually happened here. p95 means 95 out of 100 finish within it, so one slow encode is not hidden by fast ones. This is measured, never estimated.'));
+  work.append(p95Label);
   el.append(work);
 
   el.append(sparkline(x));
@@ -707,13 +764,25 @@ function card(x){
 
   const foot=mkel('div',undefined,'cardfoot');
   const receiver=x.simulated_delivery_accepted===null?'not sent':(x.simulated_delivery_accepted?'accepted':'rejected');
-  foot.append(mkel('span','Simulated receiver: '+receiver));
+  const recv=mkel('span','Simulated receiver: '+receiver);
+  recv.append(info('The one part of this that is not real. Everything up to the handoff runs for real; the distributor at the far end is a stub, and this says whether it took the package.'));
+  foot.append(recv);
   const classes=[...new Set((x.jobs||[]).map(j=>j.failure_class).filter(Boolean))];
-  if(classes.length)foot.append(mkel('span','Observed: '+classes.join(', ')));
+  if(classes.length){
+    const obs=mkel('span','Observed: '+classes.join(', '));
+    obs.append(info('What went wrong, worked out from what FFmpeg actually printed. It is deliberately not read from the scenario that was set up, so it can be wrong, and a test proves it cannot cheat.'));
+    foot.append(obs);
+  }
   const retries=(x.jobs||[]).reduce((n,j)=>n+(j.retries||0),0);
   if(retries)foot.append(mkel('span','Retries: '+retries));
-  foot.append(mkel('span','QC rules: '+(x.qc_rules||[]).join(', ')));
-  if(x.alert_rule)foot.append(mkel('span','Grafana alert rule: '+(x.alert_rule.provisioned?'provisioned via MCP':'not provisioned')));
+  const qc=mkel('span','QC rules: '+(x.qc_rules||[]).join(', '));
+  qc.append(info('The conformance checks each finished version has to pass. They are run against the file that came back, not against what was requested, so asking for something and not getting it is caught.'));
+  foot.append(qc);
+  if(x.alert_rule){
+    const ar=mkel('span','Grafana alert rule: '+(x.alert_rule.provisioned?'provisioned via MCP':'not provisioned'));
+    ar.append(info('A real alert rule was written into Grafana for this one delivery, through the official MCP server, at the moment it was created. Alert rules are normally written once by a person; here every contract gets its own, because every contract has a different date.'));
+    foot.append(ar);
+  }
   if(x.decisions&&x.decisions.length)foot.append(mkel('span',x.decisions.length+' human decision'+(x.decisions.length>1?'s':'')));
   const report=mkel('a','Download report ↓');
   report.href=`/v1/deliveries/${x.delivery_id}/report`;
@@ -813,7 +882,9 @@ function renderInvestigation(payload,deliveryId){
   box.append(grow);
 
   const ev=mkel('div',undefined,'evid');
-  ev.append(mkel('h4','Evidence the agents were bound to, read live through the official Grafana MCP server'));
+  const evHead=mkel('h4','Evidence the agents were bound to, read live through the official Grafana MCP server');
+  evHead.append(info('The exact queries the agents were given, and nothing else. They cannot go looking for anything outside this, which is why the diagnosis below has to come from what is here.'));
+  ev.append(evHead);
   const qs=be.queries||{};const prom=be.prometheus||{};
   Object.keys(qs).forEach(k=>{
     evidenceRow(ev,'PromQL',qs[k],prom[k]?promValue(prom[k]):null,
@@ -830,7 +901,9 @@ function renderInvestigation(payload,deliveryId){
   box.append(ev);
 
   const chain=mkel('div',undefined,'chain');
-  chain.append(mkel('h4','Google ADK agents: each reads the bound evidence, none can change the verdict'));
+  const chainHead=mkel('h4','Google ADK agents: each reads the bound evidence, none can change the verdict');
+  chainHead.append(info('Three agents run in order: Watch reads the situation, Diagnose explains the failure from the evidence above, Remediate proposes options. None of them can decide whether the delivery is at risk. A plain function already did that.'));
+  chain.append(chainHead);
   const outs=r.outputs||{};
   [['Watch','watch','corroborate or contradict the gate'],
    ['Diagnose','diagnose','corroborate the deterministic failure class']].forEach((spec,i)=>{
@@ -851,7 +924,9 @@ function renderInvestigation(payload,deliveryId){
   const plan=r.remediation_plan;
   if(plan&&plan.options&&plan.options.length){
     const opts=mkel('div',undefined,'opts');
-    opts.append(mkel('h4','Remediate proposed these. Approving one is a human action, recorded as a Grafana annotation'));
+    const optHead=mkel('h4','Remediate proposed these. Approving one is a human action, recorded as a Grafana annotation');
+    optHead.append(info('The agent can only propose from four actions the system can really carry out, each with what it costs the schedule. Approving is yours: the API refuses any action the agent did not propose, and writes a Grafana annotation only once a person has said yes.'));
+    opts.append(optHead);
     plan.options.forEach(o=>{
       const recommended=o.action===plan.recommended_action;
       const row=mkel('div',undefined,'opt'+(recommended?' rec':''));
@@ -879,7 +954,9 @@ function renderInvestigation(payload,deliveryId){
   const usage=r.token_usage;
   if(usage&&usage.by_agent&&Object.keys(usage.by_agent).length){
     const cost=mkel('div',undefined,'evid');
-    cost.append(mkel('h4','What this investigation cost: the agent’s own OpenTelemetry gen_ai.* telemetry, read back through the same Grafana MCP server'));
+    const costHead=mkel('h4','What this investigation cost: the agent’s own OpenTelemetry gen_ai.* telemetry, read back through the same Grafana MCP server');
+    costHead.append(info('The agents are watched by the same observability stack they are watching. Tokens spent, time taken, and every tool call, recorded as standard telemetry and read back through Grafana.'));
+    cost.append(costHead);
     const grid=mkel('div',undefined,'costgrid');
     Object.entries(usage.by_agent).forEach(([agent,counts])=>{
       const c=mkel('div',undefined,'costcell');
@@ -954,14 +1031,16 @@ async function loadComparison(){
     }
     const s=d.summary;
     const head=mkel('div',undefined,'cover');
-    [[s.invisible_miss,'misses a failure alert cannot see'],
-     [s.cried_wolf,'failures that will not cost the date'],
-     [s.agreed_at_risk,'both detectors agree, at risk'],
-     [s.agreed_healthy,'alert and gate both quiet']
-    ].forEach(([n,label])=>{
+    [[s.invisible_miss,'misses a failure alert cannot see','A delivery that is going to miss its date while nothing has failed. An ordinary failure alert is silent for these, right up to the deadline, and this is the case the whole product exists for.'],
+     [s.cried_wolf,'failures that will not cost the date','The opposite: something failed, but there is enough time left that the date is still safe. An ordinary alert wakes somebody up; SLATE stays quiet, which is the right answer.'],
+     [s.agreed_at_risk,'both detectors agree, at risk','Something failed and the date is genuinely at risk. Both detectors fire. SLATE adds why, by how much, and what it would take to recover.',''],
+     [s.agreed_healthy,'alert and gate both quiet','Nothing failed and the work still fits. Most deliveries most of the time.','right']
+    ].forEach(([n,label,tipText,pos])=>{
       const cell=mkel('div');
       cell.append(mkel('b',String(n)));
-      cell.append(mkel('span',label));
+      const lab=mkel('span',label);
+      lab.append(info(tipText,pos||''));
+      cell.append(lab);
       head.append(cell);
     });
     out.append(head);
@@ -973,7 +1052,9 @@ async function loadComparison(){
       const grid=mkel('div',undefined,'dets');
       c.detectors.forEach(det=>{
         const cell=mkel('div',undefined,'det');
-        cell.append(mkel('div',det.name,'dn'));
+        const name=mkel('div',det.name,'dn');
+        name.append(info(DETECTOR_TIP[det.name]||'A detector run against this delivery.'));
+        cell.append(name);
         const lt=det.lead_time_seconds;
         // A detector that fires once the date has gone by has a negative lead
         // time, and "-4.1 h before the date" is not a sentence. Say "after".
@@ -1010,7 +1091,9 @@ async function loadIntervention(id){
   try{
     const d=(await (await fetch('/v1/deliveries/'+id+'/intervention')).json()).data;
     host.replaceChildren();
-    host.append(mkel('h4','What the warning buys you'));
+    const buyHead=mkel('h4','What the warning buys you');
+    buyHead.append(info('An earlier warning is only worth something if the time it buys can be spent. Each row is this delivery under a different amount of encoding capacity: how much work would be left, against how much time, and whether it would land.'));
+    host.append(buyHead);
     host.append(mkel('p', d.doing_nothing_lands
       ? 'This delivery lands as planned. No capacity needs to be spent.'
       : (d.recoverable
@@ -1081,14 +1164,16 @@ async function loadMcpCoverage(){
   const names=Object.keys(inv.tools_used||{});
   const confirmed=names.filter(n=>live&&live.tools_used&&live.tools_used[n]&&live.tools_used[n].advertised).length;
   cover.replaceChildren();
-  [[live?String(live.advertised_tool_count):'72','tools this server advertises'],
-   [String(names.length),'tools SLATE calls'],
-   [live?confirmed+' / '+names.length:'not verified','confirmed advertised, live'],
-   [String(Object.keys(inv.tools_declined||{}).length),'capabilities declined, with reasons']
-  ].forEach(([n,label])=>{
+  [[live?String(live.advertised_tool_count):'72','tools this server advertises','Grafana MCP is the standard way an agent talks to Grafana. This is how many tools the official server offers, read from the running server rather than typed here.',''],
+   [String(names.length),'tools SLATE calls','How many of them this project actually uses. Calling all 72 would prove nothing; each of these seven has a reason, listed below it.',''],
+   [live?confirmed+' / '+names.length:'not verified','confirmed advertised, live','Every tool we claim to use was checked against the live server when this page loaded. A green dot is earned, not written in.',''],
+   [String(Object.keys(inv.tools_declined||{}).length),'capabilities declined, with reasons','Things the requirement mentions that we deliberately do not use, each with why. One of them we refuse on purpose even though it is available.','right']
+  ].forEach(([n,label,tipText,pos])=>{
     const cell=mkel('div');
     cell.append(mkel('b',n));
-    cell.append(mkel('span',label));
+    const lab=mkel('span',label);
+    lab.append(info(tipText,pos||''));
+    cell.append(lab);
     cover.append(cell);
   });
 

@@ -83,3 +83,31 @@ def test_every_element_id_is_unique_and_every_nav_link_resolves():
     anchors = [target for target in re.findall(r'href="#([^"]+)"', page)]
     unresolved = [target for target in anchors if ids.count(target) != 1]
     assert not unresolved, f"in-page links with no unique target: {unresolved}"
+
+
+def test_every_info_control_actually_explains_something():
+    """An "i" that says nothing is worse than no "i" at all.
+
+    The reader has already paid the cost of noticing it and moving the pointer,
+    so an empty or placeholder tip spends their attention and returns nothing.
+    """
+
+    import re
+    from pathlib import Path
+
+    page = (Path(__file__).resolve().parents[1] / "app" / "web" / "index.html").read_text(
+        encoding="utf-8"
+    )
+
+    static = re.findall(r'<span class="info[^"]*"[^>]*>', page)
+    assert len(static) >= 8, "the static explanations disappeared"
+    for tag in static:
+        found = re.search(r'data-tip="([^"]*)"', tag)
+        assert found, f"an info control carries no tip: {tag}"
+        assert len(found.group(1)) > 40, f"tip too short to explain anything: {found.group(1)}"
+
+    # The dynamic ones are built by info(), whose first argument is the tip.
+    calls = re.findall(r"info\('([^']*)'", page)
+    assert len(calls) >= 10, "the rendered explanations disappeared"
+    for tip in calls:
+        assert len(tip) > 40, f"tip too short to explain anything: {tip}"
