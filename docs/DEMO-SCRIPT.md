@@ -1,4 +1,4 @@
-# Demo video script — 2:47
+# Demo video script — 2:49
 
 Hard limit 3:00; only the first 3:00 is evaluated.
 
@@ -12,7 +12,9 @@ that sentence.
 **Timed, not guessed.** `python scripts/time_script.py` reads this file, counts the narrated
 words at 165 wpm, takes the measured execution time declared in each beat, and costs every beat
 at `max(talking, waiting)` — because talking over a wait is free, and you cannot talk for forty
-seconds over a five second click. Re-run it after any edit to the narration.
+seconds over a five second click. Re-run it after any edit to the narration — it has twice caught
+a runtime the author had estimated wrong by hand. Current estimate: **2:49, eleven seconds of
+margin.**
 
 The riskiest beat is the agent investigation at 47s: it is the only one where the product, not
 you, sets the pace.
@@ -67,12 +69,11 @@ afterwards so the recording opens clean.
 > **DO:** Board on screen, three green titles. Do not scroll, do not touch anything.
 > **POINT:** The contract dates on the three cards.
 
-**"A delivery date in post-production is contractual. Miss it and a release slips, a broadcaster
-handoff is missed, a festival slot is gone. But nobody finds out they're going to miss it until
-they miss it — because everything upstream watches for things breaking, not for whether the work
-still fits."**
+**"A delivery date in post-production is contractual. Miss it and a release slips or a
+broadcaster handoff is gone. But nobody finds out they're going to miss it until they miss it —
+because everything upstream watches for things breaking, not for whether the work still fits."**
 
-*(51 words · 19s)*
+*(45 words · 16s)*
 
 ---
 
@@ -163,19 +164,19 @@ recovered before its date."**
 > **POINT:** First the `7 / 72` tiles and the declines list. Then scroll back down for the reveal.
 
 **"While that renders — the receiver at the end is simulated, and the page says so. Seven of
-seventy-two Grafana tools, and the ones we skipped are listed with the reason. None of this is a
+seventy-two Grafana tools, and the ones we skipped are listed with reasons. None of this is a
 canned path either: every preset downloads as JSON and posts straight back."**
 
 > *Scroll back down. The PNG and the reading sit side by side.*
 
-**"And this: Grafana rendered that panel, MCP carried the PNG back, and Gemini read the chart —
-the same picture the supervisor is looking at."**
+**"And this: Grafana rendered that panel, MCP carried the PNG back, and Gemini read the chart the
+supervisor is looking at."**
 
-*(74 words · 27s)*
+*(66 words · 24s)*
 
 ---
 
-## 2:39–2:47 · Close
+## 2:41–2:49 · Close
 <!-- exec: 0 -->
 
 > **DO:** Stay on the panel reading. Do not scroll further.
