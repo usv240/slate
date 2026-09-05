@@ -24,6 +24,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
@@ -34,6 +35,8 @@ LADDER = [
     {"name": "proxy", "width": 320, "height": 180, "video_codec": "libx264", "video_bitrate_kbps": 300},
     {"name": "review", "width": 640, "height": 360, "video_codec": "libx264", "video_bitrate_kbps": 800},
 ]
+
+PROOF_TITLE = "Judge proof: premiere package"
 
 TITLES = [
     ("Nightfall S1E4 streamer package", 52, "priority"),
@@ -60,6 +63,11 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--url", default=DEFAULT_URL)
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--recording",
+        action="store_true",
+        help="also leave the at_risk codec-fault delivery that beat 4 of the demo needs",
+    )
     args = parser.parse_args()
     base = args.url.rstrip("/")
 
@@ -105,12 +113,50 @@ def main() -> int:
         run_code, _ = call(f"{base}/v1/deliveries/{delivery_id}/run", method="POST")
         print(f"seeded {title[:40]:42} +{hours}h  alert_rule={rule}  run={run_code}")
 
+    if args.recording:
+        print()
+        code, created = call(
+            f"{base}/v1/deliveries",
+            method="POST",
+            body={
+                "title": PROOF_TITLE,
+                "contractual_date": (now + timedelta(seconds=12)).isoformat().replace("+00:00", "Z"),
+                "penalty_tier": "premiere",
+                "fault_mode": "wrong_codec",
+                "specs": [{"name": "festival", "width": 640, "height": 360,
+                           "video_codec": "libx264", "video_bitrate_kbps": 800}],
+            },
+        )
+        if code != 201:
+            print(f"could not create the proof delivery: HTTP {code} {created}")
+            return 1
+        proof_id = created["data"]["delivery_id"]
+        # The gate wants positive burn across two consecutive windows of at
+        # least five seconds each, so this cannot be hurried: one blip is
+        # deliberately not evidence, and that is the property on display.
+        verdict = None
+        for attempt in range(1, 6):
+            run_code, result = call(f"{base}/v1/deliveries/{proof_id}/run", method="POST")
+            verdict = (result.get("data") or {}).get("status")
+            print(f"  run {attempt}: HTTP {run_code}  status={verdict}")
+            if verdict == "at_risk":
+                break
+            time.sleep(5.4)
+        if verdict != "at_risk":
+            print("the proof delivery never reached at_risk; beat 4 would have nothing to investigate")
+            return 1
+        print(f"{PROOF_TITLE} is at_risk and ready for beat 4")
+
     status, listing = call(f"{base}/v1/deliveries")
     rows = listing.get("data", [])
     print(f"\nboard now: {len(rows)} deliveries")
     for record in rows:
         print(f"  {record['title'][:44]:46} {record['status']}")
-    unhealthy = [r for r in rows if r["status"] not in {"healthy", "recovered"}]
+    allowed = {"healthy", "recovered"}
+    unhealthy = [
+        r for r in rows
+        if r["status"] not in allowed and not (args.recording and r["title"] == PROOF_TITLE)
+    ]
     if unhealthy:
         print("\nsome deliveries are not green; check the pipeline before recording")
         return 1

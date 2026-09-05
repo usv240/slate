@@ -54,33 +54,46 @@ is tagged with the criterion it exists to earn. Nothing is here for decoration.
 
 ## Before you hit record
 
+**One command. It does everything.**
+
 ```bash
-python scripts/seed_board.py     # fresh contractual dates, three green titles
-python scripts/check_page.py     # confirms the page actually initialises
-python scripts/time_script.py    # confirms this script still fits
+python scripts/seed_board.py --recording
 ```
 
-Then, **as setup and not on camera**: press **Run 20s judge proof** once and let it finish, then
-reload the page.
+That clears the board, creates the three contract titles with fresh dates, runs each one so they
+show real measurements, then creates the codec-fault delivery and runs it until the gate opens.
+It prints what it did and exits non-zero if anything is not ready, so if it finishes quietly you
+are ready.
 
-**What the board will look like when you start recording:** four cards, not three. The board sorts
-newest first, so **Judge proof: premiere package** sits on top, with the three seeded contract
-titles green underneath. That is correct and expected: beat 4 needs that card to exist. The
-opening shot is the headline and the stat tiles, not the board, so one flagged card does not
-matter.
+Expect it to take about half a minute, and expect the last part to look like this:
 
-**Check this before you record, it is the one thing that can silently break beat 4.** That card's
-pill must read **at_risk**, not `degraded`. `degraded` means a rendition failed but the gate has
-not opened yet: it needs positive burn across two consecutive windows of at least five seconds
-each, and one blip is deliberately not enough. If it reads `degraded`, press **Run real pipeline**
-on that card, wait six seconds, and press it again until the pill flips to `at_risk`. Then reload
-the page.
+```
+  run 1: HTTP 200  status=degraded
+  run 2: HTTP 200  status=degraded
+  run 3: HTTP 200  status=at_risk
+Judge proof: premiere package is at_risk and ready for beat 4
+```
 
-- Browser at 1440×900, zoom 100%, signed out, no extensions visible.
+Three runs, not one. The gate wants positive burn across two consecutive windows before it will
+open, because one blip is deliberately not evidence. That is the product working, not a delay.
+
+**Then reload the page.** The board should read, top to bottom:
+
+| Card | Pill |
+|---|---|
+| Judge proof: premiere package | `at_risk` |
+| Salt Road documentary trailer | `healthy` |
+| Harbour Lights feature master | `healthy` |
+| Nightfall S1E4 streamer package | `healthy` |
+
+If the top card says `degraded` instead of `at_risk`, run the command again. Nothing else in this
+script will work without it.
+
+- Browser at 1440x900, zoom 100%, signed out, no extensions visible.
 - One tab. Everything in this script is on the one page.
-- **Use the navbar, not the scrollbar.** Board, Bring your own, Grafana MCP and Blind spot are one
-  click each. Beats 4 to 6 depend on moving quickly while the agents are still working.
-- Do a silent dry run first. The buttons are the script.
+- **Use the navbar, not the scrollbar.** Board, Bring your own, Grafana MCP, Blind spot and Panel
+  read are one click each, and beats 4 to 6 depend on moving quickly while the agents work.
+- Do one silent dry run. The buttons are the script.
 
 ---
 
