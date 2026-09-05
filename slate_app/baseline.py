@@ -121,10 +121,20 @@ def classify_disagreement(record: DeliveryRecord, now: datetime) -> tuple[str, s
             "Both fire. SLATE adds why, how far past the date, and what it would cost to "
             "recover.",
         )
-    return (
-        "agreed_healthy",
-        "Neither fires, and the delivery is on track." if not will_miss else "Neither fires.",
-    )
+    # Three detectors are rendered but only two are being compared: the ordinary
+    # failure alert and the gate. Saying "neither fires" while the deadline row
+    # visibly fired read as a contradiction on screen, so name which two.
+    if deadline_passed_detector(record, now).fired:
+        why = (
+            "The failure alert and the gate are both quiet. The contractual date has already "
+            "gone by, which is the one thing a deadline check can tell you, and by then there "
+            "is nothing left to decide."
+        )
+    elif will_miss:
+        why = "Neither the failure alert nor the gate fires."
+    else:
+        why = "Neither the failure alert nor the gate fires, and the delivery is on track."
+    return ("agreed_healthy", why)
 
 
 def compare(record: DeliveryRecord, now: datetime | None = None) -> dict[str, Any]:

@@ -121,3 +121,28 @@ def test_comparison_reports_measured_inputs_not_projections():
     assert row["measured_p95_seconds_per_spec"] == 1800
     assert row["pending_specs"] == 6
     assert row["work_remaining_seconds"] > 0
+
+
+def test_a_passed_deadline_is_not_described_as_on_track():
+    """The card showed "Neither fires, and the delivery is on track" while the
+    deadline_passed row on the same card visibly fired. Three detectors are
+    rendered; only two are compared. The copy has to say which two."""
+
+    from datetime import datetime, timedelta, timezone
+
+    from slate_app.baseline import classify_disagreement
+    from slate_app.models import DeliveryRecord, RenditionSpec
+
+    record = DeliveryRecord(
+        delivery_id="del_expired",
+        title="Contract already gone",
+        contractual_date=datetime.now(timezone.utc) - timedelta(hours=4),
+        penalty_tier="standard",
+        specs=[RenditionSpec(name="proxy", width=320, height=180, video_bitrate_kbps=300)],
+        fault_mode="none",
+        pending_specs=0,
+    )
+    kind, why = classify_disagreement(record, datetime.now(timezone.utc))
+    assert kind == "agreed_healthy"
+    assert "on track" not in why
+    assert "already" in why

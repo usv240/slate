@@ -933,7 +933,7 @@ async function loadComparison(){
     [[s.invisible_miss,'misses a failure alert cannot see'],
      [s.cried_wolf,'failures that will not cost the date'],
      [s.agreed_at_risk,'both detectors agree, at risk'],
-     [s.agreed_healthy,'both detectors agree, on track']
+     [s.agreed_healthy,'alert and gate both quiet']
     ].forEach(([n,label])=>{
       const cell=mkel('div');
       cell.append(mkel('b',String(n)));
@@ -951,9 +951,12 @@ async function loadComparison(){
         const cell=mkel('div',undefined,'det');
         cell.append(mkel('div',det.name,'dn'));
         const lt=det.lead_time_seconds;
-        const label=det.fired
-          ? 'FIRES'+(lt!==null?' · '+fmtDuration(lt)+' before the date':'')
-          : 'silent';
+        // A detector that fires once the date has gone by has a negative lead
+        // time, and "-4.1 h before the date" is not a sentence. Say "after".
+        const when=lt===null?''
+          :(lt>=0?' · '+fmtDuration(lt)+' before the date'
+                 :' · '+fmtDuration(Math.abs(lt))+' after the date, too late to act');
+        const label=det.fired?'FIRES'+when:'silent';
         cell.append(mkel('div',label,'dv '+(det.fired?'yes':'no')));
         cell.append(mkel('div',det.basis,'db'));
         grid.append(cell);

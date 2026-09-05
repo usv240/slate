@@ -60,9 +60,14 @@ python scripts/check_page.py     # confirms the page actually initialises
 python scripts/time_script.py    # confirms this script still fits
 ```
 
-Then, **as setup and not on camera**: press **Run 20s judge proof** once and let it finish. That
-leaves one `at_risk` codec-fault delivery on the board, which beat 4 uses. Reload the page
-afterwards so the recording opens clean.
+Then, **as setup and not on camera**: press **Run 20s judge proof** once and let it finish, then
+reload the page.
+
+**What the board will look like when you start recording:** four cards, not three. The board sorts
+newest first, so **"Judge proof: premiere package"** sits on top showing `at_risk` and
+`codec_fault`, with the three seeded contract titles green underneath. That is correct and
+expected: beat 4 needs that card to exist. The opening shot is the headline and the stat tiles,
+not the board, so it does not matter that one card is already flagged.
 
 - Browser at 1440×900, zoom 100%, signed out, no extensions visible.
 - One tab. Everything in this script is on the one page.
@@ -75,8 +80,9 @@ afterwards so the recording opens clean.
 ## 0:00–0:16 · The problem, and what missing it costs
 <!-- exec: 0 -->
 
-> **DO:** Board on screen, three green titles. Do not scroll, do not touch anything.
-> **POINT:** The contract dates on the three cards.
+> **DO:** Page at the very top, on the headline and the four stat tiles. Do not scroll, do not
+> touch anything.
+> **POINT:** The stat tiles: contractual deliveries, and **Never / automatic remediation**.
 
 **"A delivery date in post-production is contractual. Miss it and a release slips. But nobody
 finds out they're going to miss it until they miss it, because everything upstream watches for
@@ -123,8 +129,11 @@ time to act."**
 
 > *Point at the green panel.*
 
-**"And this is what that time is worth. Do nothing, it misses by eight seconds. Approve one more
-encoder, it lands with six to spare."**
+**"And this is what that time is worth. Do nothing, and it misses. Approve one more worker, and
+it lands with seconds to spare."**
+
+> *The exact figures change on every run. Read the two the panel actually shows, or say it as
+> written above and let the screen supply the numbers. Never quote a rehearsed figure.*
 
 
 ---
@@ -132,8 +141,10 @@ encoder, it lands with six to spare."**
 ## 1:08–1:29 · The agents, on real evidence
 <!-- exec: 20 -->
 
-> **DO:** Click **Board** in the navbar, find the `at_risk` codec-fault delivery, press
-> **Ask ADK agents**. Leave it running and keep talking.
+> **DO:** Click **Board** in the navbar. The board is newest first, so the card you just created
+> in the miss proof is on top. The one you want is **"Judge proof: premiere package"**, the card
+> showing `codec_fault`. Press **Ask ADK agents** on *that* card, then leave it running and keep
+> talking.
 > **POINT:** The PromQL, LogQL and Tempo rows as they appear.
 
 **"Now the other half. This one did fail, a missing encoder. Three Google agents investigate it,
@@ -232,7 +243,7 @@ Do not re-record from the top. Each of these is recoverable in one sentence:
 
 ## Shot checklist
 
-- [ ] Board opens with three green contracted titles
+- [ ] Opening frame is the headline and the stat tiles, not the board
 - [ ] Miss proof pressed live; **failure count visibly zero across all three waves**
 - [ ] **"Nothing failed, but the work no longer fits"** said out loud on wave three
 - [ ] All three detector rows legible
