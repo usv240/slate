@@ -1,15 +1,21 @@
-# Demo video script — 2:51
+# Demo video script — 2:47
 
 Hard limit 3:00; only the first 3:00 is evaluated.
+
+**The sentence this whole video exists to land:**
+
+> **"Nothing failed. But the work no longer fits before the contractual deadline."**
+
+Everything else serves that. If a judge remembers one thing after thirty other agent demos, it is
+that sentence.
 
 **Timed, not guessed.** `python scripts/time_script.py` reads this file, counts the narrated
 words at 165 wpm, takes the measured execution time declared in each beat, and costs every beat
 at `max(talking, waiting)` — because talking over a wait is free, and you cannot talk for forty
-seconds over a five second click. Current estimate: **2:51, nine seconds of margin.** Re-run it
-after any edit to the narration.
+seconds over a five second click. Re-run it after any edit to the narration.
 
 The riskiest beat is the agent investigation at 47s: it is the only one where the product, not
-you, sets the pace. If it runs long, cut the "not our fixture" beat and you are back to 2:37.
+you, sets the pace.
 
 ## How this script is built
 
@@ -19,17 +25,21 @@ is tagged with the criterion it exists to earn. Nothing is here for decoration.
 
 | Beat | Earns |
 |---|---|
-| 1. The problem | Impact — a real audience with a costly problem |
+| 1. The problem, and what missing it costs | Impact — a real audience, a real consequence |
 | 2. The miss with zero failures | **Impact** — the strongest thing SLATE has |
 | 3. Three detectors disagree | **Impact** — a before/after that changes a decision |
-| 4. Agents on real evidence | **Tech** — partner depth, and the non-circularity fix |
-| 5. Approve → recovered | **Design** — a complete product loop, not a proof of concept |
+| 4. Agents on real evidence | **Tech** — partner depth, in plain language |
+| 5. Propose → approve → recover | **Design** — a complete product loop, not a proof of concept |
 | 6. Grafana draws, Gemini reads | **Idea** — the non-obvious partner use |
-| 7. Boundaries and close | Trust — a judge who finds a weakness you already named trusts the rest |
+| 7. Close | Trust |
 
-**The two waits are the point, not dead air.** The miss proof takes ~30s and the investigation
-~45s. Narration spoken over an existing wait is free time, and that is where half this script
-lives. Do not cut either wait; the wait is the proof it is really running.
+**Two rules that keep this landing.**
+
+1. *The waits are the point, not dead air.* The miss proof takes ~28s and the investigation ~47s.
+   Narration over an existing wait is free time. Do not cut either; the wait is the proof it is
+   really running.
+2. *Sell the product, do not defend a dissertation.* The repository is exhaustively honest about
+   what is simulated and what is not claimed. On camera that is **one sentence**. No more.
 
 ---
 
@@ -38,6 +48,7 @@ lives. Do not cut either wait; the wait is the proof it is really running.
 ```bash
 python scripts/seed_board.py     # fresh contractual dates, three green titles
 python scripts/check_page.py     # confirms the page actually initialises
+python scripts/time_script.py    # confirms this script still fits
 ```
 
 Then, **as setup and not on camera**: press **Run 20s judge proof** once and let it finish. That
@@ -50,21 +61,22 @@ afterwards so the recording opens clean.
 
 ---
 
-## 0:00–0:12 · The problem
+## 0:00–0:19 · The problem, and what missing it costs
 <!-- exec: 0 -->
 
 > **DO:** Board on screen, three green titles. Do not scroll, do not touch anything.
 > **POINT:** The contract dates on the three cards.
 
-**"A delivery date in post-production is contractual. You can't move it. But nobody finds out
-they're going to miss it until they miss it — because everything upstream watches for things
-breaking, not for whether the work still fits."**
+**"A delivery date in post-production is contractual. Miss it and a release slips, a broadcaster
+handoff is missed, a festival slot is gone. But nobody finds out they're going to miss it until
+they miss it — because everything upstream watches for things breaking, not for whether the work
+still fits."**
 
-*(38 words · 14s)*
+*(51 words · 19s)*
 
 ---
 
-## 0:12–0:52 · The miss with zero failures  ← the most important 40 seconds
+## 0:19–0:53 · The miss with zero failures  ← the most important 35 seconds
 <!-- exec: 28 -->
 
 > **DO:** Scroll to **"What a failure alert cannot see"**, press **Prove it: a miss with zero
@@ -84,100 +96,86 @@ Every encode is going to pass."**
 
 > *Wave 3 lands. Status flips to at risk.*
 
-**"Wave three. Twenty-eight seconds of work, nineteen seconds of window. That delivery is now
-going to miss its date — and not one thing has broken."**
+**"Wave three. Twenty-eight seconds of work, nineteen seconds of window. Nothing failed — but the
+work no longer fits before the deadline."**
 
-*(90 words · 33s, spread across ~40s of real encoding)*
+*(88 words · 32s, over ~28s of real encoding)*
 
 ---
 
-## 0:52–1:10 · Three detectors, same run
+## 0:53–1:10 · Three detectors, same run
 <!-- exec: 2 -->
 
 > **DO:** The comparison renders underneath on its own.
-> **POINT:** Each row in turn — `any_failure`, then `deadline_passed`, then `slate_gate` and its
-> lead time.
+> **POINT:** Each row in turn — `any_failure`, then `deadline_passed`, then `slate_gate`.
 
-**"Here's what three detectors say about that exact run. A failure alert: silent — nothing
-failed, and it stays silent until the date goes by. A deadline check: silent. Ours fired nineteen
-seconds before the date. That's the whole product."**
+**"Here's what three detectors say about that exact run. A failure alert: silent — nothing failed,
+and it stays silent until the date goes by. A deadline check: silent, and useless. SLATE fired
+before the deadline, while there was still time to act. That's the difference."**
 
-*(42 words · 15s)*
+*(48 words · 17s)*
 
 ---
 
-## 1:10–1:54 · The agents, on real evidence
+## 1:10–1:58 · The agents, on real evidence
 <!-- exec: 47 -->
 
 > **DO:** Scroll to the board, find the `at_risk` codec-fault delivery, press **Ask ADK agents**.
 > Narrate over the wait.
 > **POINT:** While it runs — the PromQL, LogQL and Tempo rows as they appear.
 
-**"Now the other half. This delivery did fail — a missing encoder. Three Google ADK agents on
-Gemini, and every observation goes through the official Grafana MCP server. Metrics, logs,
-traces."**
+**"Now the other half. This one did fail — a missing encoder. Three Google agents investigate it,
+and every observation goes through the official Grafana MCP server: the metrics, the logs, and
+the trace for this exact delivery. Nothing is summarised from memory."**
 
 > *Investigation lands.*
 > **POINT:** The quoted stderr inside the Diagnose block.
 
-**"There. Diagnose is quoting FFmpeg's actual stderr — 'Unknown encoder'. An earlier build of
-this wrote the fault we injected onto the trace and asked the model to diagnose it. It scored a
-hundred percent and measured nothing. Now a deterministic classifier reads stderr, and two tests
-fail the build if it can even see the scenario name."**
+**"There. The diagnosis has to come from real evidence — it's quoting FFmpeg's actual error,
+'Unknown encoder', not an answer we planted in the scenario. An earlier build of this did plant
+it, scored a hundred percent, and was measuring nothing."**
 
-*(100 words · 36s, over ~45s of real agent execution)*
+*(85 words · 31s, over ~47s of real agent execution)*
 
 ---
 
-## 1:54–2:16 · A costed proposal, a human, a recovery
+## 1:58–2:19 · Propose, approve, recover
 <!-- exec: 10 -->
 
 > **DO:** Scroll to the remediation options. Press **Approve** on the recommended one. Then press
 > **Run real pipeline** on that delivery.
 > **POINT:** The schedule cost on each option, then the status pill flipping to `recovered`.
 
-**"Remediate proposes in a typed schema — only the four things this API can actually do, each one
-costed. I approve one. That approval is what writes the Grafana annotation, not the agent.
-Re-run, and it's recovered."**
+**"Now SLATE doesn't just raise an alarm. It gives the operator four actions the system can
+actually carry out, each with its schedule cost. The agent recommends, the human approves — and
+that approval is what writes the Grafana annotation, not the agent. Re-run, and the delivery is
+recovered before its date."**
 
-*(38 words · 14s + ~8s of execution)*
-
----
-
-## 2:16–2:29 · It is not our fixture
-<!-- exec: 0 -->
-
-> **DO:** Scroll up to the preset cards. Hover the **JSON ↓** button on one of them.
-> **POINT:** The three preset cards, then the **Build your own delivery** row beneath them.
-
-**"And none of this is a canned path. Every preset downloads as JSON and posts straight back to
-the same endpoint. You can build your own rendition ladder, and run your own PromQL through the
-same MCP server."**
-
-*(38 words · 14s — this is the first beat to cut if you are running long)*
+*(53 words · 19s + ~10s of execution)*
 
 ---
 
-## 2:29–2:52 · Grafana draws it, Gemini reads it
+## 2:19–2:39 · Grafana draws it, Gemini reads it
 <!-- exec: 18 -->
 
 > **DO:** Press **Render the panel through MCP** *now*, then immediately scroll up to the
 > integration section and talk while it renders (~17s).
 > **POINT:** First the `7 / 72` tiles and the declines list. Then scroll back down for the reveal.
 
-**"While that renders — the boundaries. The receiver at the end is simulated, and the page says
-so. Seven of seventy-two Grafana tools, and the ones we skipped are listed with the reason."**
+**"While that renders — the receiver at the end is simulated, and the page says so. Seven of
+seventy-two Grafana tools, and the ones we skipped are listed with the reason. None of this is a
+canned path either: every preset downloads as JSON and posts straight back."**
 
 > *Scroll back down. The PNG and the reading sit side by side.*
 
 **"And this: Grafana rendered that panel, MCP carried the PNG back, and Gemini read the chart —
 the same picture the supervisor is looking at."**
 
-*(60 words · 22s)*
+*(74 words · 27s)*
 
 ---
 
-## 2:52–3:00 · Close
+## 2:39–2:47 · Close
 <!-- exec: 0 -->
 
 > **DO:** Stay on the panel reading. Do not scroll further.
@@ -192,14 +190,12 @@ objective it already is."**
 
 ## If something fails on camera
 
-Do not re-record from the top. All three of these are recoverable in one sentence:
+Do not re-record from the top. Each of these is recoverable in one sentence:
 
 - **A wave runs slow and the gate opens on wave two.** Say *"there it is, a wave early"* and carry
   on. The point is that it opened with zero failures, not which wave it was.
-- **The investigation runs past 45s.** There is ~20s of slack in beats 6 and 7. Trim the
-  boundaries sentence and keep the reveal.
-- **You are running long.** Cut the "not our fixture" beat entirely. It is 14 seconds and
-  nothing later depends on it.
+- **The investigation runs past 47s.** Cut the "none of this is a canned path" clause in beat 6.
+  That is your slack.
 - **The panel render fails.** Say *"that one needs the renderer and it isn't answering — the
   reading is commentary anyway, the gate already decided"*, then go to the close. It costs the
   Idea beat, not the video.
@@ -208,16 +204,15 @@ Do not re-record from the top. All three of these are recoverable in one sentenc
 
 - [ ] Board opens with three green contracted titles
 - [ ] Miss proof pressed live; **failure count visibly zero across all three waves**
-- [ ] Work-left versus window-left called out on the final wave
-- [ ] All three detector rows legible, with the lead time
+- [ ] **"Nothing failed, but the work no longer fits"** said out loud on wave three
+- [ ] All three detector rows legible
 - [ ] Agent investigation pressed live, not cut
 - [ ] **Quoted FFmpeg stderr legible on screen**
-- [ ] `decision_source` and `classification_source` visible at least once
 - [ ] Typed remediation options with schedule costs visible
 - [ ] Approval pressed on camera, `recovered` shown
 - [ ] `7 / 72` tiles and the declines list on screen
 - [ ] Rendered PNG shown beside Gemini's reading
-- [ ] Simulated receiver stated out loud
+- [ ] Simulated receiver stated out loud, once
 - [ ] Under 3:00, uploaded **Public**, English audio or subtitles
 
 ## Rules compliance for the video itself
