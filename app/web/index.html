@@ -56,7 +56,14 @@
        itself. This also fixes the scrollIntoView calls, which honour
        scroll-margin too and were landing just as badly. */
     html{scroll-behavior:smooth}
-    [id]{scroll-margin-top:calc(var(--navh, 96px) + 16px)}
+    /* scroll-padding on the container, not scroll-margin on the targets. The
+       margin version only works if it is set on the exact element the fragment
+       resolves to, which meant tagging every anchor and getting it wrong when
+       one turned out to be a div. Padding is a property of the scroller and
+       applies to anything scrolled into it, including the scrollIntoView calls.
+       Both html and body carry it because body sets overflow-x, which can make
+       it the scrolling box rather than the viewport. */
+    html,body{scroll-padding-top:calc(var(--navh, 96px) + 18px)}
     .navtools{display:flex;gap:8px;align-items:center}
     .mode{display:flex;border:1px solid var(--line);border-radius:99px;padding:3px;background:var(--panel)}
     .mode button{border:0;border-radius:99px;background:transparent;padding:7px 13px;color:var(--muted)}
@@ -363,6 +370,13 @@
       <button class="themebtn" id="theme" type="button" aria-pressed="false">Dark</button>
     </div>
   </nav>
+  <script>
+    // Set before first paint so an inbound /#board lands correctly too.
+    (function(){
+      var n=document.querySelector('nav');
+      if(n)document.documentElement.style.setProperty('--navh',n.offsetHeight+'px');
+    })();
+  </script>
 
   <header>
     <div>
@@ -618,6 +632,28 @@ function info(tip,extra){
   el.setAttribute('aria-label','What this means: '+tip);
   return el;
 }
+
+// A tip that opens off the edge of the window is clipped away by the page's
+// overflow rule and the reader sees nothing at all. Rather than hand-tagging
+// every control near an edge and getting it wrong when the layout reflows,
+// each one decides for itself the moment it is opened.
+(function(){
+  const TIP_HALF=160, TIP_TALL=120;
+  function place(el){
+    if(!el.classList||!el.classList.contains('info'))return;
+    const box=el.getBoundingClientRect();
+    el.classList.toggle('right', box.left + TIP_HALF > innerWidth - 8);
+    // --navh is the sticky bar; a tip opening upward under it is unreadable.
+    const navh=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--navh'))||0;
+    el.classList.toggle('below', box.top - TIP_TALL < navh + 8);
+  }
+  ['pointerenter','focusin'].forEach(type=>{
+    document.addEventListener(type, e=>{
+      const el=e.target.closest?e.target.closest('.info'):null;
+      if(el)place(el);
+    }, true);
+  });
+})();
 
 /* ---------- sticky bar height ---------- */
 // Measured, not assumed: the bar is one row on a wide screen and two when the
