@@ -64,10 +64,17 @@ Then, **as setup and not on camera**: press **Run 20s judge proof** once and let
 reload the page.
 
 **What the board will look like when you start recording:** four cards, not three. The board sorts
-newest first, so **"Judge proof: premiere package"** sits on top showing `at_risk` and
-`codec_fault`, with the three seeded contract titles green underneath. That is correct and
-expected: beat 4 needs that card to exist. The opening shot is the headline and the stat tiles,
-not the board, so it does not matter that one card is already flagged.
+newest first, so **Judge proof: premiere package** sits on top, with the three seeded contract
+titles green underneath. That is correct and expected: beat 4 needs that card to exist. The
+opening shot is the headline and the stat tiles, not the board, so one flagged card does not
+matter.
+
+**Check this before you record, it is the one thing that can silently break beat 4.** That card's
+pill must read **at_risk**, not `degraded`. `degraded` means a rendition failed but the gate has
+not opened yet: it needs positive burn across two consecutive windows of at least five seconds
+each, and one blip is deliberately not enough. If it reads `degraded`, press **Run real pipeline**
+on that card, wait six seconds, and press it again until the pill flips to `at_risk`. Then reload
+the page.
 
 - Browser at 1440×900, zoom 100%, signed out, no extensions visible.
 - One tab. Everything in this script is on the one page.
@@ -146,11 +153,15 @@ it lands with seconds to spare."**
 ## 1:07–1:29 · The agents, on real evidence
 <!-- exec: 20 -->
 
-> **DO:** Click **Board** in the navbar. The board is newest first, so the card you just created
-> in the miss proof is on top. The one you want is **"Judge proof: premiere package"**, the card
-> showing `codec_fault`. Press **Ask ADK agents** on *that* card, then leave it running and keep
-> talking. The investigation panel opens directly underneath the board.
-> **POINT:** The block headed **"Evidence the agents were bound to"**, and its PromQL, LogQL and
+> **DO:** Click **Board** in the navbar. Scroll down past the card the miss proof just created
+> (the board is newest first) to the one titled **Judge proof: premiere package**. Its status pill
+> must read **at_risk** and its footer must show `Observed: codec_fault`. Press **Ask ADK agents**
+> on the right-hand side of *that* card, then take your hands off and keep talking. The
+> investigation renders in a panel directly under the board.
+>
+> *The button is on every card, so make sure you are on the right one. Pressing it on a healthy
+> card is not an error, it returns an abstention, but it is not this beat.*
+> **POINT:** The block headed **Evidence the agents were bound to**, and its PromQL, LogQL and
 > Tempo rows as they fill in.
 
 **"Now the other half. This one did fail, a missing encoder. Three Google agents investigate it,
@@ -245,6 +256,10 @@ Do not re-record from the top. Each of these is recoverable in one sentence:
 
 - **A wave runs slow and the gate opens on wave two.** Say *"there it is, a wave early"* and carry
   on. The point is that it opened with zero failures, not which wave it was.
+- **You press Ask ADK agents and get an abstention.** You are on the wrong card, or that card is
+  `degraded` rather than `at_risk`. Say *"the gate has not opened on this one, so the agents
+  refuse to run and no model is called"*, which is true and is a point in your favour, then press
+  it on the right card.
 - **The investigation runs past 47s.** Stay in beat 5 and say one more line about the builder.
   It is the one beat you can stretch, because nothing there is on a clock.
 - **The MCP query in beat 5 errors.** Say *"and that is the server's own error text, not ours"*
@@ -262,6 +277,7 @@ Do not re-record from the top. Each of these is recoverable in one sentence:
 - [ ] **"Nothing failed, but the work no longer fits"** said out loud on wave three
 - [ ] All three detector rows legible
 - [ ] **Green "what the warning buys you" panel on screen, both rows read out**
+- [ ] **Judge proof card reads `at_risk`, not `degraded`, before recording starts**
 - [ ] Agent investigation pressed live, not cut
 - [ ] **Presets and the ladder builder shown while the agents are still working**
 - [ ] **One query run through MCP live, raw response visible**

@@ -673,11 +673,16 @@ function card(x){
   const run=mkel('button','Run real pipeline','primary');
   run.onclick=()=>runPipeline(x.delivery_id,run);
   actions.append(run);
-  if(x.status==='at_risk'){
-    const ask=mkel('button','Ask ADK agents','secondary');
-    ask.onclick=()=>investigate(x.delivery_id,ask);
-    actions.append(ask);
-  }
+  // The button used to appear only on at_risk cards. That hid the behaviour the
+  // presets advertise, which is that asking a delivery the gate has not opened
+  // returns an abstention and calls no model at all: the one claim here a judge
+  // most wants to test is the one the interface would not let them try.
+  const ask=mkel('button','Ask ADK agents','secondary');
+  ask.title=x.status==='at_risk'
+    ? 'The deterministic gate has opened. The agents will investigate.'
+    : 'The gate has not opened, so the agents will abstain and no model is called.';
+  ask.onclick=()=>investigate(x.delivery_id,ask);
+  actions.append(ask);
   const del=mkel('button','Remove','danger');
   del.onclick=()=>removeDelivery(x.delivery_id,del);
   actions.append(del);
