@@ -152,3 +152,61 @@ def test_a_completed_queue_reports_no_outstanding_work(tmp_path: Path):
     result = runner.run(make_record())
     assert result.pending_specs == 0
     assert result.package_complete is True
+
+
+def test_the_pipeline_never_runs_wider_than_the_gate_assumes(tmp_path: Path, monkeypatch):
+    """Concurrency has to be the same number in both stories.
+
+    `gate.py` divides remaining work by `active_workers` to project completion.
+    The pool used to be pinned at four regardless, so a four-rendition ladder
+    encoded four-wide while the gate projected it as serial, and approving
+    `increase_workers` moved the arithmetic without moving the clock. This is a
+    behavioural check rather than a source check: it counts how many transcodes
+    are actually in flight at once.
+    """
+
+    import threading
+    import time
+
+    from slate_app.models import JobResult
+
+    # No FFmpeg needed: the transcode and the source generation are both stubbed,
+    # so this proof runs everywhere rather than only where FFmpeg is installed.
+    monkeypatch.setenv("FFMPEG_BINARY", "unused-by-this-test")
+    monkeypatch.setattr(PipelineRunner, "_source", lambda self, d, delivery_id: d / "source.mp4")
+    runner = PipelineRunner(tmp_path)
+
+    live = 0
+    peak = 0
+    guard = threading.Lock()
+
+    def fake_transcode(self, record, plan):
+        nonlocal live, peak
+        with guard:
+            live += 1
+            peak = max(peak, live)
+        time.sleep(0.05)
+        with guard:
+            live -= 1
+        return JobResult(
+            spec_name=plan.spec.name,
+            status="passed",
+            duration_seconds=0.05,
+            output_bytes=1,
+            retries=0,
+            exit_code=0,
+        )
+
+    monkeypatch.setattr(PipelineRunner, "_transcode", fake_transcode)
+
+    record = make_record()
+    record.specs = [
+        RenditionSpec(name=f"r{n}", width=320, height=180, video_bitrate_kbps=300)
+        for n in range(6)
+    ]
+    record.pending_specs = len(record.specs)
+    record.active_workers = 2
+
+    runner.run(record)
+    assert peak <= record.active_workers, f"ran {peak} wide while the gate assumed 2"
+    assert peak == 2, "granting a second worker must actually be used"

@@ -87,6 +87,18 @@ Updated: 2026-09-04. Live revision `slate-delivery-slo-00037`, `min-instances 1`
 - [x] The converse pinned too: a failure with two days of slack is a `cried_wolf` case where the
       ordinary alert fires and SLATE stays quiet
 
+- [x] **The remediation moves the machine, not a number.** The gate divides remaining work by
+      `active_workers`, but the thread pool was pinned at four regardless, so a rendition ladder
+      encoded four-wide while the gate projected it as serial and approving `increase_workers`
+      changed the arithmetic without changing the clock. The pool is now sized from
+      `active_workers`, and `test_the_pipeline_never_runs_wider_than_the_gate_assumes` fails the
+      build if the two ever diverge again. Verified by reverting the fix: the guard fails
+- [x] **What the warning buys, in the delivery's own numbers.** `slate_app/intervention.py` is a
+      pure function over the measured p95: doing nothing, and each extra worker a supervisor
+      could approve, with whether each one lands before the contractual date. On the measured
+      eight-rendition case that is a miss by 8.2s doing nothing and a landing with 5.8s to spare
+      with one more worker. It can return bad news, and a test pins a case no capacity recovers
+
 ## Release tasks
 
 - [ ] Record and publish the under-three-minute demo. Script in `docs/DEMO-SCRIPT.md`

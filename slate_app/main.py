@@ -21,6 +21,7 @@ from .access import (
     issue_key,
 )
 from .gate import evaluate_jeopardy
+from .intervention import outcomes as intervention_outcomes
 from .grafana_mcp import (
     GrafanaMcp,
     GrafanaNotConfigured,
@@ -922,6 +923,22 @@ async def remediation(delivery_id: str, request: RemediationApproval) -> dict[st
             "delivery": record.model_dump(mode="json"),
         }
     }
+
+
+@app.get("/v1/deliveries/{delivery_id}/intervention")
+def delivery_intervention(delivery_id: str) -> dict[str, object]:
+    """What acting on the warning is actually worth, in this delivery's own numbers.
+
+    Firing earlier than a failure alert is only worth something if the extra time
+    can be spent. This returns the projection for doing nothing and for each
+    number of extra workers a supervisor could approve, using the p95 the
+    renditions here have already measured rather than any rate card.
+    """
+
+    record = store.get(delivery_id)
+    if not record:
+        raise HTTPException(404, detail={"code": "delivery_not_found", "message": "Unknown delivery."})
+    return {"data": intervention_outcomes(record)}
 
 
 @app.get("/v1/deliveries/{delivery_id}/report")

@@ -277,7 +277,14 @@ class PipelineRunner:
             if limit is not None:
                 plans = plans[: max(0, limit)]
             jobs: list[JobResult] = []
-            with ThreadPoolExecutor(max_workers=min(4, len(plans))) as executor:
+            # The gate divides remaining work by `active_workers`, so the pipeline
+            # has to actually run that wide. A fixed pool made the projection and
+            # the execution two different stories: the gate believed a rendition
+            # ladder was serial while four encodes ran at once, and approving
+            # `increase_workers` moved the arithmetic without moving the clock.
+            # Concurrency is now whatever the supervisor has actually granted.
+            concurrency = max(1, min(record.active_workers, len(plans)))
+            with ThreadPoolExecutor(max_workers=concurrency) as executor:
                 futures = [executor.submit(self._transcode, record, plan) for plan in plans]
                 for future in as_completed(futures):
                     jobs.append(future.result())

@@ -108,6 +108,15 @@
     .tool .dot.off{background:var(--muted)}
     .tool .tname{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.8rem;font-weight:700}
     .tool .tfor{font-size:.79rem;color:var(--muted);line-height:1.45}
+    .buys{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--ok);padding:14px 18px;margin-top:14px}
+    .buys h4{margin:0 0 4px;font-size:.7rem;text-transform:uppercase;letter-spacing:.09em;color:var(--ok)}
+    .buys .blead{font-size:.9rem;line-height:1.5;margin:0 0 10px}
+    .buyrow{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:baseline;padding:8px 0;border-top:1px solid var(--line);font-size:.83rem}
+    .buyrow .bw{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.76rem;color:var(--muted);white-space:nowrap}
+    .buyrow .bv{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.78rem;font-weight:700;white-space:nowrap}
+    .buyrow.lands .bv{color:var(--ok)}
+    .buyrow.misses .bv{color:var(--bad)}
+    .buys .bnote{font-size:.76rem;color:var(--muted);line-height:1.5;margin-top:10px;padding-top:9px;border-top:1px dotted var(--line)}
     .covmap{background:var(--panel);border:1px solid var(--line);padding:6px 18px 12px;margin-bottom:14px}
     .covmap h4{margin:12px 0 2px;font-size:.7rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
     .cap{display:grid;grid-template-columns:auto 1fr;gap:11px;padding:10px 0;border-top:1px solid var(--line);align-items:start}
@@ -402,6 +411,7 @@
     <p class="quiet plain">A delivery can be going to miss its contractual date while nothing has failed at all. An alert that watches for failures is silent for that, right up to the deadline. Every delivery on this board is put through three detectors below, on the same measured data.</p>
     <p class="quiet technical">Each verdict is computed from that delivery's measured p95, its real job results and its real burn observations. Nothing is projected. <code>/v1/evaluation/detectors</code></p>
     <div id="cmpOut"></div>
+    <div class="buys" id="buyOut" hidden></div>
   </section>
 
   <section>
@@ -873,6 +883,34 @@ loadComparison();
 /* Create a real delivery that will miss its date without anything failing, and
    let the three detectors disagree about it on camera. Eight heavy renditions at
    a measured five seconds each is forty seconds of work; the window is fifty. */
+// An earlier warning is only worth something if the time it buys can be spent.
+// Every figure here is arithmetic over the p95 these renditions just measured.
+async function loadIntervention(id){
+  const host=$('#buyOut');
+  try{
+    const d=(await (await fetch('/v1/deliveries/'+id+'/intervention')).json()).data;
+    host.replaceChildren();
+    host.append(mkel('h4','What the warning buys you'));
+    host.append(mkel('p', d.doing_nothing_lands
+      ? 'This delivery lands as planned. No capacity needs to be spent.'
+      : (d.recoverable
+         ? 'Doing nothing misses the date. Approving '+d.cheapest_save.added_workers+
+           ' more worker'+(d.cheapest_save.added_workers>1?'s':'')+' lands it, with '+
+           fmtDuration(d.cheapest_save.slack_seconds)+' to spare.'
+         : 'Doing nothing misses the date, and no amount of extra capacity recovers it. '+
+           'The honest answer here is to escalate the date.'), 'blead'));
+    d.options.forEach(o=>{
+      const row=mkel('div',undefined,'buyrow '+(o.lands_before_contract?'lands':'misses'));
+      row.append(mkel('span',o.added_workers===0?'do nothing':'+'+o.added_workers+' worker'+(o.added_workers>1?'s':''),'bw'));
+      row.append(mkel('span',fmtDuration(o.projected_work_seconds)+' of work against '+fmtDuration(d.window_seconds)+' of window'));
+      row.append(mkel('span',(o.lands_before_contract?'lands, '+fmtDuration(o.slack_seconds)+' spare':'misses by '+fmtDuration(Math.abs(o.slack_seconds))),'bv'));
+      host.append(row);
+    });
+    host.append(mkel('div',d.not_claimed,'bnote'));
+    host.hidden=false;
+  }catch(e){ host.hidden=true; }
+}
+
 $('#missProof').onclick=async()=>{
   const b=$('#missProof'), out=$('#cmpOut');
   b.disabled=true;
@@ -898,6 +936,7 @@ $('#missProof').onclick=async()=>{
     }
     await load();
     await loadComparison();
+    await loadIntervention(id);
     $('#cmpOut').scrollIntoView({behavior:'smooth',block:'start'});
   }catch(e){ say('Proof failed: '+e.message); }
   finally{ b.disabled=false; }
