@@ -1,6 +1,6 @@
 """The impact claim, made checkable.
 
-SLATE does not claim to beat a failure alert to a failure — a failure is instant
+SLATE does not claim to beat a failure alert to a failure, because a failure is instant
 and nothing beats it. It claims a failure alert is answering a different
 question, and that the difference costs delivery dates. These tests pin the two
 disagreements that carry that argument, so the claim cannot quietly stop being

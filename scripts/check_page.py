@@ -74,9 +74,9 @@ def rendered_only(dom: str) -> str:
 
 #: Substrings that must be gone once the page has initialised.
 FORBIDDEN = (
-    ("Loading&hellip;", "the demo panel never resolved"),
-    ("Loading…", "the demo panel never resolved"),
-    ("Checking…", "the demo panel never resolved"),
+    ("Loading&hellip;", "a placeholder was left rendered on the page"),
+    ("Loading…", "a placeholder was left rendered on the page"),
+    ("Checking…", "a placeholder was left rendered on the page"),
     ("Waiting for API", "the board never loaded from the API"),
 )
 

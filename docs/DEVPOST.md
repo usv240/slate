@@ -13,7 +13,7 @@ A delivery date you cannot move is an SLO. SLATE burns it down in real time from
 ## Inspiration
 
 Every facility delivering to a streamer runs the same gauntlet: ingest, transcode to N
-deliverable specs, QC, package, deliver — against a contractual date. QC rejection at the
+deliverable specs, QC, package, deliver, against a contractual date. QC rejection at the
 platform submission stage is dramatically more expensive than catching the same fault locally,
 and an unexpected rejection can take a launch date with it.
 
@@ -40,8 +40,8 @@ plainly what we did not confirm.
 
 ## What it does
 
-SLATE runs a **real** pipeline — FFmpeg ingest, parallel rendition fan-out, conformance QC,
-packaging — and turns its real durations, failures, retries and queue depth into the telemetry
+SLATE runs a **real** pipeline: FFmpeg ingest, parallel rendition fan-out, conformance QC
+and packaging. It turns its real durations, failures, retries and queue depth into the telemetry
 that drives a deterministic jeopardy gate. An incident opens only when three things are true at
 once: projected completion is past the contractual date, burn has been positive across two
 consecutive evaluation windows, and work remains. One bad window is not evidence.
@@ -61,13 +61,13 @@ That number was measuring nothing, and we removed it.
 The injected scenario now only configures **reality**: a genuinely unreadable file on disk, an
 encoder name this FFmpeg build does not have, a real subprocess deadline, an additional
 conformance rule the asset cannot satisfy. The class has to be recovered from what FFmpeg
-actually printed — stderr signatures, exit status, output size, QC result — by a classifier in
+actually printed, from stderr signatures, exit status, output size and QC result, by a classifier in
 `slate_app/classify.py` that structurally cannot see the scenario.
 
 Three tests enforce it, and they fail the build:
 
 - the classifier's own source may not contain `fault_mode`;
-- neither may `_transcode`, `_attempt`, `_qc` or `run` — only `plan`, which builds the real
+- neither may `_transcode`, `_attempt`, `_qc` or `run`. Only `plan` may, and it builds the real
   configuration, is allowed to read it;
 - no emitted job result may contain the scenario name.
 
@@ -78,13 +78,13 @@ evaluation includes a healthy control, which a classifier that labels everything
 ## The other bug: the agents had no logs at all
 
 The LogQL bound to the agents was `{service_name="slate"} | json | delivery_id="..."`. It
-returned zero rows on every run — including in our own recorded acceptance artifact — because
+returned zero rows on every run, including in our own recorded acceptance artifact, because
 OTLP delivers the log line as a JSON *string* nested inside `body`, so one `| json` stage
 exposes `body` and never `delivery_id`. The agents appeared to be querying logs and were
 receiving nothing.
 
 Reparsing after `line_format` fixed it, and it is why Diagnose can now quote FFmpeg's actual
-stderr — `Unknown encoder 'encoder_that_does_not_exist'` — instead of restating a label.
+stderr, `Unknown encoder 'encoder_that_does_not_exist'`, instead of restating a label.
 
 ## How it uses the Grafana stack
 
@@ -96,7 +96,7 @@ unattended deployments, which is what this is.
 | Operation | Tool | Where it happens |
 |---|---|---|
 | Metrics | `query_prometheus` | Agent evidence, health probe, agent-cost read-back |
-| Logs | `query_loki_logs` | Agent evidence — the real FFmpeg stderr |
+| Logs | `query_loki_logs` | Agent evidence, the real FFmpeg stderr |
 | Traces | `tempo_get-trace` | Per-delivery span tree: ingest → each rendition → QC → package |
 | **Alert rule write** | `alerting_manage_rules` | A Grafana-managed rule provisioned **per delivery**, at creation |
 | **Annotation write** | `create_annotation` | Only after a human approves a remediation |
@@ -105,16 +105,17 @@ unattended deployments, which is what this is.
 The product page states this coverage rather than leaving it to be inferred, and states it
 accurately: **this server advertises 72 tools and SLATE calls seven.** Each row is confirmed
 advertised against the running server when the page loads, so the status is earned rather than
-asserted. Of the capabilities the track requirement names — querying metrics, logs and traces,
-searching dashboards, and managing alerts and incidents — SLATE uses five. The sixth, incidents,
-runs on Grafana IRM, a Grafana Cloud plugin this self-hosted OSS stack does not have; that is
+asserted. The page also renders the requirement's capability list line by line, in the requirement's own
+wording: querying metrics, logs and traces, searching dashboards, managing alerts, correlating
+all three during root-cause analysis, and AI Observability. SLATE answers seven of the eight.
+The eighth, investigating incidents, runs on Grafana IRM, a Grafana Cloud plugin this self-hosted OSS stack does not have; that is
 listed on the page as a decline with the reason, next to OnCall, Sift, and `update_dashboard`,
 which is refused on purpose so the operator's view is not something the model can rewrite.
 
 That last one is the loop closing on itself: the agent's operational sense is the same picture
 the supervisor is looking at, read as an image rather than as numbers it was handed. The PNG is
 shown beside the reading so a viewer can check one against the other. The reading is explicitly
-commentary — `decision_source` stays `deterministic_gate`.
+commentary, and `decision_source` stays `deterministic_gate`.
 
 The alert rule is authored by SLATE, not by Gemini. A model that cannot set the verdict must not
 be able to author the rule that encodes it either.
@@ -131,15 +132,15 @@ product is not configured here and nothing depends on it.
 
 | Layer | Owns | Cannot |
 |---|---|---|
-| Pure function (`gate.py`) | Whether the delivery is in jeopardy | — |
+| Pure function (`gate.py`) | Whether the delivery is in jeopardy | none |
 | Pure function (`classify.py`) | Why the rendition failed | See the injected scenario |
 | Gemini via ADK | Corroborating both against evidence; proposing typed options; describing a rendered chart | Set a verdict, assign a class, execute anything, author an alert rule |
-| Delivery supervisor | Every action | — |
+| Delivery supervisor | Every action | none |
 
 Remediate emits a typed `RemediationPlan` constrained to the four actions the API can actually
 perform, each with an honest schedule cost and a reversibility flag. The board renders those
 options as the approval buttons themselves, and the endpoint returns **409** for any action the
-agent did not propose — so the reasoning and the control are the same object, not two things
+agent did not propose, so the reasoning and the control are the same object, not two things
 sitting next to each other. Approving `requeue_safe` and re-running returns the delivery to
 `recovered`.
 
@@ -171,7 +172,7 @@ is no third-party footage, music, logo or found dataset anywhere in the product 
 
 Capacity starvation as a real class, which needs a worker pool under genuine contention rather
 than a fabricated label. More runs for a defensible p95 by codec and spec class. Review by a
-streaming or broadcast operations professional — we have not had one, and `docs/LIMITATIONS.md`
+streaming or broadcast operations professional. We have not had one, and `docs/LIMITATIONS.md`
 says so alongside everything else we have not shown.
 
 ## Built with
@@ -199,7 +200,7 @@ Pydantic · Caddy · Docker · GitHub Actions
 - [ ] Public repository URL
 - [ ] Public video URL (YouTube/Vimeo, ≤3:00, English or subtitled)
 - [ ] Text description (features, functionality, technologies, data sources, findings and
-      learnings) — all covered above
+      learnings), all covered above
 - [ ] Team members added on Devpost
 - [ ] Every link opened signed out and confirmed working
 - [ ] Repo license shows Apache-2.0 in the About section

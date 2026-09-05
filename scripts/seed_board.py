@@ -5,8 +5,8 @@ contracts by Thursday. This is not something to paper over in the product: a
 delivery whose date has passed *should* look wrong. It is something to fix
 before recording or before a judging window opens.
 
-The script removes existing deliveries — and the Grafana alert rule provisioned
-with each — then creates three healthy titles with day-scale windows and runs
+The script removes existing deliveries, and the Grafana alert rule provisioned
+with each, then creates three healthy titles with day-scale windows and runs
 each once, so the board opens green with real measurements and live metrics
 rather than an empty shell.
 

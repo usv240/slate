@@ -1,7 +1,7 @@
 """Make the FFmpeg proofs unskippable where they are supposed to run.
 
-The tests that matter most — the five scenarios classified from real FFmpeg
-output — skip themselves when FFmpeg is absent. That is right on a developer
+The tests that matter most, the five scenarios classified from real FFmpeg
+output, skip themselves when FFmpeg is absent. That is right on a developer
 machine and dangerous in CI: if the FFmpeg install step ever broke, every one of
 them would skip, the run would still be green, and the badge would be asserting
 a proof that had not executed.

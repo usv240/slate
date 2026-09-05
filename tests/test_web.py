@@ -38,3 +38,23 @@ def test_metrics_expose_pipeline_series():
     assert response.status_code == 200
     assert "slate_job_duration_seconds" in response.text
     assert "slate_schedule_budget_seconds" in response.text
+
+
+def test_no_em_dash_reaches_the_page_or_anything_it_renders():
+    """Punctuation is a house style decision, so it gets a guard like any other.
+
+    The page is one file, but half of what it shows arrives from the API, so
+    checking the HTML alone would pass while a served string still carried one.
+    """
+
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    surfaces = [root / "app" / "web" / "index.html"] + sorted((root / "slate_app").rglob("*.py"))
+    offenders = [
+        f"{path.relative_to(root).as_posix()}:{n}"
+        for path in surfaces
+        for n, line in enumerate(path.read_text(encoding="utf-8").split("\n"), 1)
+        if "\u2014" in line or "&mdash;" in line
+    ]
+    assert not offenders, f"em dash on a user-visible surface: {offenders}"

@@ -19,9 +19,9 @@ The schedule-budget mechanic and predictive pre-miss alerting are not novel. Our
 2. schedule burn is positive across at least two consecutive evaluation windows of at least five seconds each;
 3. work remains.
 
-**Why did the rendition fail?** A deterministic classifier decides, from FFmpeg's own stderr, exit status, output size and QC result — in [`slate_app/classify.py`](slate_app/classify.py).
+**Why did the rendition fail?** A deterministic classifier decides, from FFmpeg's own stderr, exit status, output size and QC result, in [`slate_app/classify.py`](slate_app/classify.py).
 
-That second one used to be false. An earlier build labelled each failure with the fault that had been *injected* into the run, wrote that label onto the trace span and the Prometheus counter, and then asked the agent to "diagnose" it. The agent read the answer key back, and the benchmark scored the round trip at 100%. The scenario now only configures reality — an unreadable file, a missing encoder, a real deadline, an extra conformance rule — and the class has to be recovered from what FFmpeg actually printed. Two tests enforce it: the classifier's source may not contain `fault_mode`, and neither may the measurement path.
+That second one used to be false. An earlier build labelled each failure with the fault that had been *injected* into the run, wrote that label onto the trace span and the Prometheus counter, and then asked the agent to "diagnose" it. The agent read the answer key back, and the benchmark scored the round trip at 100%. The scenario now only configures reality: an unreadable file, a missing encoder, a real deadline, an extra conformance rule. The class has to be recovered from what FFmpeg actually printed. Two tests enforce it: the classifier's source may not contain `fault_mode`, and neither may the measurement path.
 
 Gemini corroborates both decisions against raw evidence and proposes bounded options. Watch, Diagnose and Remediate use Grafana exclusively through the official MCP path. Remediate proposes only, in a typed schema constrained to the four actions the API can actually perform, and the approval endpoint refuses any action the agent did not propose.
 
@@ -30,16 +30,40 @@ Gemini corroborates both decisions against raw evidence and proposes bounded opt
 | Operation | Tool | Where |
 |---|---|---|
 | Metrics | `query_prometheus` | Agent evidence, health probe, AI-observability read-back |
-| Logs | `query_loki_logs` | Agent evidence — the real FFmpeg stderr |
+| Logs | `query_loki_logs` | Agent evidence, the real FFmpeg stderr |
 | Traces | `tempo_get-trace` | Agent evidence, per-delivery span tree |
 | **Dashboard search** | `search_dashboards` | `/v1/integrations/grafana/dashboards` finds the operator's dashboard and returns a link back to Grafana for human review |
 | **Alert rule write** | `alerting_manage_rules` | A Grafana-managed rule provisioned per delivery at creation |
 | **Annotation write** | `create_annotation` | After, and only after, a human approves a remediation |
 | **Panel render** | `get_panel_image` | Grafana draws the schedule-budget panel, MCP carries the PNG, Gemini reads the chart multimodally at `/v1/integrations/grafana/panel-reading` |
 
+### Three of those seven are not the obvious use
+
+The first four are what anyone would do with observability MCP. These three are the reason this
+integration is worth a look:
+
+- **`alerting_manage_rules`.** Alert rules are normally authored once by a human and left alone.
+  SLATE writes one **per delivery** at creation, because the thing being watched is a contract and
+  every contract has a different date. The rule is deleted with the delivery.
+- **`create_annotation`.** The write is not the agent acting. It fires only after a human approves
+  a remediation, so the Grafana timeline becomes the audit record of who decided what, and when.
+- **`get_panel_image`.** MCP is treated as a text API almost everywhere. Here Grafana renders the
+  same panel the supervisor is looking at, MCP carries the PNG back, and Gemini reads the *chart*
+  multimodally. The PNG it was given is shown beside the reading so you can check one against the
+  other.
+
+### Coverage against what the track requirement actually names
+
+`/v1/integrations/grafana/inventory` returns the requirement's capability list in the
+requirement's own wording, each row mapped to the tool that answers it, and the product page
+renders it. **Seven of the eight are covered.** The eighth, investigating incidents through IRM,
+is a Grafana Cloud plugin: the rules direct unattended deployments to the self-hosted OSS server,
+and that choice is what removes it. `tests/test_grafana_mcp.py` fails the build if a row claims
+"covered" while naming a tool SLATE does not call.
+
 This server advertises **72 tools**; SLATE calls seven. `/v1/integrations/grafana/evidence`
 lists each one with what it is for and confirms the server offers it, alongside the capabilities
-named in the track requirement that SLATE **declines** and why — Grafana IRM incidents, OnCall
+named in the track requirement that SLATE **declines** and why: Grafana IRM incidents, OnCall
 and Sift are Grafana Cloud plugins unavailable on a self-hosted OSS stack, and `update_dashboard`
 is refused on purpose so the operator's view is not something the model can rewrite.
 
@@ -61,16 +85,16 @@ it in waves, with **no fault injected at all**:
 
 Every rendition passed. On that same run, `/v1/evaluation/detectors` reports:
 
-- `any_failure` — **silent**. Nothing failed, so it has nothing to say, and it will stay silent
+- `any_failure`: **silent**. Nothing failed, so it has nothing to say, and it will stay silent
   until the date goes by.
-- `deadline_passed` — **silent**. Correct, and useless.
-- `slate_gate` — **fires, 19.7 seconds before the contractual date.**
+- `deadline_passed`: **silent**. Correct, and useless.
+- `slate_gate`: **fires, 19.7 seconds before the contractual date.**
 
 The button on the page runs exactly that, live, in about thirty seconds.
 
 What this does *not* show, and the page says so: SLATE does not beat a failure alert to a hard
 failure. A failure is instant and nothing beats it. It shows the failure alert is answering a
-different question — and that a delivery can be lost without anything failing.
+different question, and that a delivery can be lost without anything failing.
 
 The converse is checked too. A rendition that fails with two days of slack is a `cried_wolf`
 case: the ordinary alert fires, SLATE stays quiet, because the date is not at risk.
@@ -79,18 +103,18 @@ case: the ordinary alert fires, SLATE stays quiet, because the date is not at ri
 
 Three things a judge can drive that are not our fixtures:
 
-- **Named preset scenarios** at `/v1/presets` — a healthy four-rendition ladder, a festival cut
+- **Named preset scenarios** at `/v1/presets`: a healthy four-rendition ladder, a festival cut
   whose encoder is missing, and a distributor tightening the QC spec mid-delivery. Each one
   loads in a click, downloads as JSON, and is *exactly* the body `POST /v1/deliveries` accepts.
   A test asserts that: the downloaded file posted back unchanged creates the same record, so a
   preset is not a privileged path.
-- **Your own delivery ladder.** The rendition rows on the page are not decoration — resolution,
+- **Your own delivery ladder.** The rendition rows on the page are not decoration. Resolution,
   codec and bitrate are passed to FFmpeg unchanged, and the QC stage decodes what actually came
   back rather than trusting what was requested. Out-of-range specs are refused with a 422, not
   silently clamped.
 - **Your own PromQL** at `/v1/analyze/promql`, run through the same official Grafana MCP server
   the agents use, returning the server's raw response. The agents run three fixed queries on
-  purpose — an agent free to compose any query can also compose a misleading one — and that is a
+  purpose, because an agent free to compose any query can also compose a misleading one, and that is a
   limit on the agent, not on the integration.
 
 ## Verified baseline

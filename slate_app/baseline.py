@@ -9,10 +9,10 @@ see that no matter how good it is.
 So the same measured run is put through three detectors and the disagreement is
 reported:
 
-* `any_failure` — fires as soon as a rendition fails. This is the ordinary alert.
-* `deadline_passed` — fires when the contractual date has gone. Always correct,
+* `any_failure`: fires as soon as a rendition fails. This is the ordinary alert.
+* `deadline_passed`: fires when the contractual date has gone. Always correct,
   always useless.
-* `slate_gate` — the deterministic three-threshold gate.
+* `slate_gate`: the deterministic three-threshold gate.
 
 Two of the disagreements carry the argument:
 
@@ -175,8 +175,8 @@ def summarise(comparisons: list[dict[str, Any]]) -> dict[str, Any]:
             "real pipeline runs, not projected."
         ),
         "not_claimed": (
-            "This does not show SLATE fires earlier than a failure alert on a hard failure — "
-            "it usually does not, because a failure is instant. It shows the failure alert is "
+            "This does not show SLATE fires earlier than a failure alert on a hard failure. "
+            "It usually does not, because a failure is instant. It shows the failure alert is "
             "answering a different question."
         ),
     }

@@ -22,13 +22,13 @@
    budget the deterministic gate computed and whether its Grafana alert rule was provisioned.
 2. Press **Run 20s judge proof**. It creates a delivery whose encoder does not exist, then
    runs the real FFmpeg pipeline three times. Watch the gate refuse to open an incident on the
-   first two windows — one blip is not evidence — and open on the third.
+   first two windows, because one blip is not evidence, and open on the third.
 3. The investigation renders automatically. Check four things:
    - `decision_source` is `deterministic_gate` and `classification_source` is
      `deterministic_stderr_classifier`;
    - the PromQL, LogQL and Tempo rows are the queries the agents were actually bound to;
-   - **Diagnose quotes FFmpeg's own stderr** — `Unknown encoder 'encoder_that_does_not_exist'`
-     — rather than restating a label;
+   - **Diagnose quotes FFmpeg's own stderr**, `Unknown encoder 'encoder_that_does_not_exist'`,
+     rather than restating a label;
    - Remediate's options are typed, costed, and rendered as the approval buttons themselves.
 4. Approve the recommended option. A Grafana annotation is written only at that moment. Press
    **Run real pipeline** once more: the delivery returns to `recovered` and the simulated
@@ -44,8 +44,8 @@
 the injected scenario onto the trace span and derived the Prometheus `failure_class` label from
 it, then asked Gemini to diagnose it. The benchmark scored that round trip at 100%.
 
-Now the scenario only configures reality — an unreadable file on disk, an encoder name this
-FFmpeg build does not have, a real subprocess deadline, an additional conformance rule — and the
+Now the scenario only configures reality: an unreadable file on disk, an encoder name this
+FFmpeg build does not have, a real subprocess deadline, an additional conformance rule, and the
 class must be recovered from what FFmpeg actually printed.
 
 | Check it here | What it shows |
@@ -68,7 +68,7 @@ gate opens.
 Then read the detector comparison underneath it. On that same run: `any_failure` is silent,
 `deadline_passed` is silent, and `slate_gate` fired roughly twenty seconds before the date.
 
-That is the whole argument for the product, and none of it is projected — the per-rendition cost
+That is the whole argument for the product, and none of it is projected. The per-rendition cost
 is the p95 those encodes just measured. `tests/test_baseline.py` pins both disagreements, and the
 summary states plainly what is *not* claimed: SLATE does not beat a failure alert to a hard
 failure, because nothing does.
@@ -79,7 +79,7 @@ failure, because nothing does.
 |---|---|
 | Load any of the three presets, then press **JSON ↓** and `curl -X POST` the file back | A preset is exactly the create body, not a privileged path. `tests/test_access.py` asserts every preset validates against the real request model and is accepted unchanged |
 | Open **Build your own delivery** and change the ladder | Those rows are the FFmpeg arguments. Ask for `libx265` at 3840×2160 and that is what gets encoded; ask for something out of range and you get a 422 rather than a silent clamp |
-| Type your own PromQL into **Bring your own query** | It goes through the same official `mcp-grafana` server the agents use, and you get the server's raw response — including its own error text if the expression is bad |
+| Type your own PromQL into **Bring your own query** | It goes through the same official `mcp-grafana` server the agents use, and you get the server's raw response, including its own error text if the expression is bad |
 
 ## Verifying the rest is not theatre
 

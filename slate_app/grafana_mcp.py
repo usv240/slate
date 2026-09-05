@@ -175,7 +175,7 @@ def alert_rule_payload(delivery_id: str, title: str, contractual_date: str) -> d
 
     The rule is the deterministic gate's first threshold expressed in Grafana's
     own alerting model: reduce the delivery's schedule budget to its last value
-    and alert when it drops below zero. It is created by SLATE, not by Gemini —
+    and alert when it drops below zero. It is created by SLATE, not by Gemini:
     a model that cannot set a verdict must not be able to author the rule that
     represents it either.
     """
@@ -249,6 +249,81 @@ TOOLS_USED: dict[str, str] = {
     "create_annotation": "record an approved remediation on the timeline, after human approval",
     "get_panel_image": "render the schedule-budget panel so Gemini can read the chart",
 }
+
+#: The three uses that are not the obvious way to reach for this server. The
+#: first four tools above are what anyone would do with observability MCP; these
+#: three are the reason this integration is worth looking at.
+TOOLS_UNUSUAL: dict[str, str] = {
+    "alerting_manage_rules": (
+        "Alert rules are normally authored once by a human and left alone. SLATE writes one "
+        "per delivery at creation, because the thing being watched is a contract, and every "
+        "contract has a different date. The rule is deleted with the delivery."
+    ),
+    "create_annotation": (
+        "The write is not the agent acting. It fires only after a human approves a remediation, "
+        "so the Grafana timeline becomes the audit record of who decided what and when."
+    ),
+    "get_panel_image": (
+        "MCP is used as a text API almost everywhere. Here Grafana renders the same panel the "
+        "supervisor is looking at, MCP carries the PNG back, and Gemini reads the chart "
+        "multimodally. The PNG it was given is shown beside the reading so you can check one "
+        "against the other."
+    ),
+}
+
+#: Every capability the track requirement names, and where SLATE answers it. The
+#: wording of each capability is the requirement's own, so the mapping can be
+#: checked line by line rather than taken on trust.
+REQUIREMENT_COVERAGE: tuple[dict[str, str], ...] = (
+    {
+        "capability": "Query metrics (PromQL-compatible) for live system context",
+        "status": "covered",
+        "tool": "query_prometheus",
+        "where": "Agent evidence sweep, the health probe, and a judge's own expression at /v1/analyze/promql",
+    },
+    {
+        "capability": "Query logs (LogQL) for live system context",
+        "status": "covered",
+        "tool": "query_loki_logs",
+        "where": "Diagnose quotes FFmpeg's own stderr from Loki rather than restating a label",
+    },
+    {
+        "capability": "Query traces",
+        "status": "covered",
+        "tool": "tempo_get-trace",
+        "where": "A media deliverable as a span tree, ingest through simulated delivery",
+    },
+    {
+        "capability": "Search dashboards and generate links back to Grafana for human review",
+        "status": "covered",
+        "tool": "search_dashboards",
+        "where": "/v1/integrations/grafana/dashboards returns the link and refuses to paraphrase the view",
+    },
+    {
+        "capability": "Manage alerts",
+        "status": "covered",
+        "tool": "alerting_manage_rules",
+        "where": "A Grafana-managed rule provisioned per delivery at creation and removed with it",
+    },
+    {
+        "capability": "Correlate metrics, logs and traces during root-cause analysis",
+        "status": "covered",
+        "tool": "query_prometheus + query_loki_logs + tempo_get-trace, one MCP session",
+        "where": "The evidence sweep binds Watch, Diagnose and Remediate to one session over all three signals",
+    },
+    {
+        "capability": "Investigate incidents using Grafana IRM-related workflows",
+        "status": "declined",
+        "tool": "create_incident, list_incidents, Sift, OnCall",
+        "where": "Grafana Cloud plugins. The rules direct unattended deployments to the self-hosted OSS server, and that choice is what removes IRM. On a Cloud stack this is the next step",
+    },
+    {
+        "capability": "AI Observability: the agent's own LLM calls, token cost, latency and MCP tool activity",
+        "status": "covered",
+        "tool": "query_prometheus over gen_ai.* series",
+        "where": "/v1/integrations/grafana/ai-observability reads the agent's own OpenTelemetry telemetry back through the same MCP server",
+    },
+)
 
 #: Capabilities the requirement text names that SLATE does not use, and why.
 TOOLS_DECLINED: dict[str, str] = {

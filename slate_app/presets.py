@@ -113,7 +113,7 @@ PRESETS: tuple[Preset, ...] = (
         demonstrates="A different failure class, from configuration rather than a crash",
         detail=(
             "The distributor adds a textless-element requirement the asset cannot satisfy. "
-            "Every encode exits cleanly, so nothing looks broken at the process level — the "
+            "Every encode exits cleanly, so nothing looks broken at the process level. The "
             "failure is found by the conformance rules, and the class comes back as "
             "qc_failure with the specific rule named."
         ),

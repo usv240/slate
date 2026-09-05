@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>SLATE — Delivery dates as SLOs</title>
+  <title>SLATE: Delivery dates as SLOs</title>
   <style>
     /* Light is the default on first load even when the OS prefers dark: this is
        an operations surface read in bright rooms, and an unrequested jump to a
@@ -67,12 +67,12 @@
     /* judge console */
     .console{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:16px;margin:8px 0 30px}
     .console>*{min-width:0}
+    .console.solo{grid-template-columns:minmax(0,1fr)}
     .panel{background:var(--panel);border:1px solid var(--rule,var(--line));border:1px solid var(--line);padding:18px 20px}
     .panel h3{margin:0 0 4px;font-family:Georgia,serif;font-size:1.15rem}
     .panel .sub{color:var(--muted);font-size:.85rem;margin:0 0 12px}
     .videoframe{position:relative;width:100%;aspect-ratio:16/9;background:var(--code-bg);border:1px solid var(--line);border-radius:3px;overflow:hidden}
     .videoframe iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
-    .videoempty{display:grid;place-items:center;height:100%;text-align:center;padding:18px;color:var(--code-ink);font-size:.88rem;line-height:1.55}
     .keyrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
     .keyout{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.74rem;background:var(--code-bg);color:var(--code-ink);padding:10px 12px;border-radius:3px;overflow-wrap:anywhere;margin:0 0 8px}
     .keyout[hidden]{display:none}
@@ -108,6 +108,18 @@
     .tool .dot.off{background:var(--muted)}
     .tool .tname{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.8rem;font-weight:700}
     .tool .tfor{font-size:.79rem;color:var(--muted);line-height:1.45}
+    .covmap{background:var(--panel);border:1px solid var(--line);padding:6px 18px 12px;margin-bottom:14px}
+    .covmap h4{margin:12px 0 2px;font-size:.7rem;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
+    .cap{display:grid;grid-template-columns:auto 1fr;gap:11px;padding:10px 0;border-top:1px solid var(--line);align-items:start}
+    .cap .mark{font-size:.85rem;line-height:1.45;font-weight:800;color:var(--ok)}
+    .cap.no .mark{color:var(--warn)}
+    .cap .ctext{font-size:.85rem;line-height:1.45}
+    .cap .cmeta{font-size:.77rem;color:var(--muted);line-height:1.5;margin-top:3px}
+    .cap .cmeta b{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.74rem;font-weight:700;color:var(--ink)}
+    .tool.rare{border-color:var(--navy)}
+    :root[data-theme="dark"] .tool.rare{border-color:var(--code-ink)}
+    .tool .badge{display:inline-block;font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;font-weight:800;background:var(--navy);color:var(--navy-ink);border-radius:99px;padding:2px 7px;margin-left:8px;vertical-align:middle}
+    .tool .twhy{font-size:.79rem;color:var(--ink);line-height:1.5;margin-top:7px;padding-top:7px;border-top:1px dotted var(--line)}
     .declines{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--warn);padding:14px 18px}
     .declines h4{margin:0 0 8px;font-size:.7rem;text-transform:uppercase;letter-spacing:.09em;color:var(--warn)}
     .declines dt{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.78rem;font-weight:700;margin-top:9px}
@@ -286,7 +298,7 @@
     <div>
       <div class="eyebrow">Post-production delivery intelligence</div>
       <h1>A deadline you cannot move deserves an SLO.</h1>
-      <p class="lead plain">SLATE watches every version of a title as it is made and warns the delivery supervisor when the remaining work will cross the contractual date—not merely when a machine fails.</p>
+      <p class="lead plain">SLATE watches every version of a title as it is made and warns the delivery supervisor when the remaining work will cross the contractual date, not merely when a machine fails.</p>
       <p class="lead technical">SLATE traces ingest → rendition fan-out → QC → packaging, derives schedule budget from measured p95 work, and opens jeopardy only after the deterministic three-part gate passes. Failure classes come from FFmpeg's own stderr, never from the scenario that was injected.</p>
     </div>
     <aside class="truth">
@@ -307,17 +319,15 @@
   <section class="bar">
     <div class="stat"><b id="total">0</b><span>contractual deliveries</span></div>
     <div class="stat"><b id="risk">0</b><span>currently at risk</span></div>
-    <div class="stat"><b id="tightest">—</b><span>tightest schedule budget</span></div>
+    <div class="stat"><b id="tightest">n/a</b><span>tightest schedule budget</span></div>
     <div class="stat"><b>Never</b><span>automatic remediation</span></div>
   </section>
 
-  <section class="console">
-    <div class="panel">
+  <section class="console solo" id="consoleRow">
+    <div class="panel" id="demoPanel" hidden>
       <h3>The three-minute demonstration</h3>
-      <p class="sub" id="demoNote">Checking…</p>
-      <div class="videoframe" id="demoFrame">
-        <div class="videoempty">Loading…</div>
-      </div>
+      <p class="sub" id="demoNote"></p>
+      <div class="videoframe" id="demoFrame"></div>
       <div class="links" id="demoLinks"></div>
     </div>
     <div class="panel">
@@ -341,7 +351,7 @@
     <div class="presets" id="presets"></div>
 
     <details class="panel" id="builder" style="margin-bottom:14px">
-      <summary style="cursor:pointer;font-weight:600">Build your own delivery &mdash; these specs drive the real FFmpeg commands</summary>
+      <summary style="cursor:pointer;font-weight:600">Build your own delivery: these specs drive the real FFmpeg commands</summary>
       <p class="sub" style="margin-top:10px">Every row below becomes an actual encode. Resolution, codec and bitrate are passed to FFmpeg unchanged, and the QC stage decodes what comes back rather than trusting what was requested.</p>
       <div class="buildhead">
         <span>Rendition</span><span>Width</span><span>Height</span><span>Codec</span><span>kb/s</span><span></span>
@@ -396,12 +406,13 @@
 
   <section>
     <div class="section-head">
-      <div><div class="eyebrow">Partner integration</div><h2>Seven tools, each one chosen.</h2></div>
+      <div><div class="eyebrow">Partner integration</div><h2>Seven tools. Three of them unusual.</h2></div>
       <span class="quiet" id="mcpUpdated"></span>
     </div>
     <p class="quiet plain">Everything SLATE knows about the pipeline, and every change it records, travels through the official Grafana MCP server. The counts below are read live from that server, not written here.</p>
     <p class="quiet technical">Official <code>grafana/mcp-grafana</code> v1.1.0 over stdio against a self-hosted Grafana OSS stack, which the rules permit for unattended deployments. Each row is confirmed advertised by the running server at load time.</p>
     <div class="cover" id="mcpCover"></div>
+    <div class="covmap" id="mcpCoverage"></div>
     <div class="tools" id="mcpTools"></div>
     <div class="declines" id="mcpDeclines"></div>
   </section>
@@ -410,7 +421,7 @@
     <div class="section-head">
       <div><div class="eyebrow">Bring your own query</div><h2>The MCP path is general, not three canned calls.</h2></div>
     </div>
-    <p class="quiet plain">The agents run three fixed queries on purpose &mdash; an agent free to compose any query can also compose a misleading one. That is a limit we put on the agent, not on the integration. Type your own PromQL and it goes through the same official Grafana MCP server.</p>
+    <p class="quiet plain">The agents run three fixed queries on purpose, because an agent free to compose any query can also compose a misleading one. That is a limit we put on the agent, not on the integration. Type your own PromQL and it goes through the same official Grafana MCP server.</p>
     <p class="quiet technical">Posts to <code>/v1/analyze/promql</code>, which calls <code>query_prometheus</code> over the official <code>mcp-grafana</code> stdio transport and returns the server's raw response. Read only.</p>
     <div class="chips" id="promqlChips"></div>
     <div class="promqlrow">
@@ -520,7 +531,7 @@ async function load(){
   $('#total').textContent=rows.length;
   $('#risk').textContent=rows.filter(x=>x.status==='at_risk').length;
   const budgets=rows.map(latestBudget).filter(v=>v!==null);
-  $('#tightest').textContent=budgets.length?fmtDuration(Math.min(...budgets)):'—';
+  $('#tightest').textContent=budgets.length?fmtDuration(Math.min(...budgets)):'n/a';
   $('#updated').textContent='Updated '+new Date().toLocaleTimeString();
   const board=$('#board');board.replaceChildren();
   if(!rows.length){board.append(mkel('div','No delivery records yet. Add one above; nothing is pre-seeded as live telemetry.','empty'));return}
@@ -653,11 +664,11 @@ function renderInvestigation(payload,deliveryId){
   const head=mkel('div',undefined,'invhead');
   head.append(mkel('h3','Why this delivery is in jeopardy'));
   const pills=mkel('div',undefined,'pillrow');
-  pills.append(mkel('span','verdict: '+(gate.verdict||'—'),'mini warn'));
-  pills.append(mkel('span','decision: '+(r.decision_source||'—'),'mini ok'));
-  pills.append(mkel('span','class: '+(r.classification_source||'—'),'mini ok'));
-  pills.append(mkel('span',r.observability_source||'—','mini'));
-  pills.append(mkel('span',r.model||'—','mini'));
+  pills.append(mkel('span','verdict: '+(gate.verdict||'unknown'),'mini warn'));
+  pills.append(mkel('span','decision: '+(r.decision_source||'unknown'),'mini ok'));
+  pills.append(mkel('span','class: '+(r.classification_source||'unknown'),'mini ok'));
+  pills.append(mkel('span',r.observability_source||'unknown','mini'));
+  pills.append(mkel('span',r.model||'unknown','mini'));
   pills.append(mkel('span','human required','mini warn'));
   head.append(pills);box.append(head);
 
@@ -675,7 +686,7 @@ function renderInvestigation(payload,deliveryId){
   box.append(grow);
 
   const ev=mkel('div',undefined,'evid');
-  ev.append(mkel('h4','Evidence the agents were bound to — read live through the official Grafana MCP server'));
+  ev.append(mkel('h4','Evidence the agents were bound to, read live through the official Grafana MCP server'));
   const qs=be.queries||{};const prom=be.prometheus||{};
   Object.keys(qs).forEach(k=>{
     evidenceRow(ev,'PromQL',qs[k],prom[k]?promValue(prom[k]):null,
@@ -692,7 +703,7 @@ function renderInvestigation(payload,deliveryId){
   box.append(ev);
 
   const chain=mkel('div',undefined,'chain');
-  chain.append(mkel('h4','Google ADK agents — each reads the bound evidence, none can change the verdict'));
+  chain.append(mkel('h4','Google ADK agents: each reads the bound evidence, none can change the verdict'));
   const outs=r.outputs||{};
   [['Watch','watch','corroborate or contradict the gate'],
    ['Diagnose','diagnose','corroborate the deterministic failure class']].forEach((spec,i)=>{
@@ -713,7 +724,7 @@ function renderInvestigation(payload,deliveryId){
   const plan=r.remediation_plan;
   if(plan&&plan.options&&plan.options.length){
     const opts=mkel('div',undefined,'opts');
-    opts.append(mkel('h4','Remediate proposed these — approving one is a human action, recorded as a Grafana annotation'));
+    opts.append(mkel('h4','Remediate proposed these. Approving one is a human action, recorded as a Grafana annotation'));
     plan.options.forEach(o=>{
       const recommended=o.action===plan.recommended_action;
       const row=mkel('div',undefined,'opt'+(recommended?' rec':''));
@@ -741,7 +752,7 @@ function renderInvestigation(payload,deliveryId){
   const usage=r.token_usage;
   if(usage&&usage.by_agent&&Object.keys(usage.by_agent).length){
     const cost=mkel('div',undefined,'evid');
-    cost.append(mkel('h4','What this investigation cost — the agent’s own OpenTelemetry gen_ai.* telemetry, read back through the same Grafana MCP server'));
+    cost.append(mkel('h4','What this investigation cost: the agent’s own OpenTelemetry gen_ai.* telemetry, read back through the same Grafana MCP server'));
     const grid=mkel('div',undefined,'costgrid');
     Object.entries(usage.by_agent).forEach(([agent,counts])=>{
       const c=mkel('div',undefined,'costcell');
@@ -783,7 +794,7 @@ async function investigate(id,b){
     const r=await fetch(`/v1/jeopardy/${id}/investigate`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({operator_id:'web-judge'})});
     const data=await r.json();
     if(r.ok&&data.data&&data.data.outputs){$('#proof').hidden=true;renderInvestigation(data,id)}
-    else showProof('AGENT ABSTAINED — DETERMINISTIC GATE NOT PASSED',data);
+    else showProof('AGENT ABSTAINED: DETERMINISTIC GATE NOT PASSED',data);
   }finally{b.disabled=false;b.textContent=original}
 }
 
@@ -922,14 +933,40 @@ async function loadMcpCoverage(){
     cover.append(cell);
   });
 
+  // Every capability the requirement names, in the requirement's own wording, so
+  // the mapping can be read line by line instead of taken on trust.
+  const cov=$('#mcpCoverage');
+  cov.replaceChildren();
+  cov.append(mkel('h4','Every capability the track requirement names'));
+  (inv.requirement_coverage||[]).forEach(c=>{
+    const met=c.status==='covered';
+    const row=mkel('div',undefined,'cap'+(met?'':' no'));
+    row.append(mkel('div',met?'✓':'✗','mark'));
+    const body=mkel('div');
+    body.append(mkel('div',c.capability,'ctext'));
+    const meta=mkel('div',undefined,'cmeta');
+    meta.append(mkel('b',c.tool));
+    meta.append(document.createTextNode(' · '+c.where));
+    body.append(meta);
+    row.append(body);
+    cov.append(row);
+  });
+
+  // The three non-obvious uses lead. The other four are what anyone would do
+  // with observability MCP, and they are not the reason to look at this.
+  const unusual=inv.tools_unusual||{};
   tools.replaceChildren();
-  names.forEach(name=>{
+  names.slice().sort((a,b)=>(unusual[b]?1:0)-(unusual[a]?1:0)).forEach(name=>{
     const ok=!!(live&&live.tools_used&&live.tools_used[name]&&live.tools_used[name].advertised);
-    const row=mkel('div',undefined,'tool');
+    const rare=unusual[name];
+    const row=mkel('div',undefined,'tool'+(rare?' rare':''));
     row.append(mkel('i',undefined,'dot'+(ok?'':' off')));
     const body=mkel('div');
-    body.append(mkel('div',name,'tname'));
+    const head=mkel('div',name,'tname');
+    if(rare) head.append(mkel('span','not the obvious use','badge'));
+    body.append(head);
     body.append(mkel('div',inv.tools_used[name],'tfor'));
+    if(rare) body.append(mkel('div',rare,'twhy'));
     row.append(body);
     tools.append(row);
   });
@@ -1075,30 +1112,28 @@ loadPresets();
 /* ---------- judge console ---------- */
 const ORIGIN=location.origin;
 async function loadDemo(){
+  // The panel ships hidden. An unrecorded video is not a thing to announce on
+  // the product surface, and a black box saying so reads as unfinished. Set
+  // SLATE_DEMO_VIDEO_URL and the panel appears on its own.
+  const panel=$('#demoPanel'), row=$('#consoleRow');
   const frame=$('#demoFrame'), note=$('#demoNote'), links=$('#demoLinks');
   try{
     const d=(await (await fetch('/v1/demo')).json()).data;
+    if(!(d.published&&d.embed_url)) return;
     links.replaceChildren();
-    if(d.published&&d.embed_url){
-      note.textContent='Recorded demonstration of this deployment, under three minutes.';
-      const f=document.createElement('iframe');
-      f.src=d.embed_url;f.title='SLATE demonstration';f.loading='lazy';
-      f.allow='accelerometer; clipboard-write; encrypted-media; picture-in-picture';
-      f.setAttribute('allowfullscreen','');
-      frame.replaceChildren(f);
-      const w=mkel('a','Open on the video host ↗');w.href=d.watch_url;w.target='_blank';w.rel='noreferrer';
-      links.append(w);
-      if(d.download_url){const dl=mkel('a','Download the file ↓');dl.href=d.download_url;links.append(dl)}
-    }else{
-      note.textContent='Not recorded yet — and we are not going to pretend otherwise.';
-      const empty=mkel('div',undefined,'videoempty');
-      empty.append(mkel('div','No demonstration video is published for this deployment yet.'));
-      empty.append(mkel('div','The judge proof on this page runs the same path live, on real FFmpeg, in about twenty seconds.'));
-      frame.replaceChildren(empty);
-    }
+    note.textContent='Recorded demonstration of this deployment, under three minutes.';
+    const f=document.createElement('iframe');
+    f.src=d.embed_url;f.title='SLATE demonstration';f.loading='lazy';
+    f.allow='accelerometer; clipboard-write; encrypted-media; picture-in-picture';
+    f.setAttribute('allowfullscreen','');
+    frame.replaceChildren(f);
+    const w=mkel('a','Open on the video host ↗');w.href=d.watch_url;w.target='_blank';w.rel='noreferrer';
+    links.append(w);
+    if(d.download_url){const dl=mkel('a','Download the file ↓');dl.href=d.download_url;links.append(dl)}
+    panel.hidden=false;
+    row.classList.remove('solo');
   }catch(e){
-    note.textContent='Could not reach the demo endpoint.';
-    frame.replaceChildren(mkel('div','—','videoempty'));
+    /* Unreachable endpoint leaves the panel hidden, which is the honest default. */
   }
 }
 
@@ -1143,7 +1178,7 @@ $('#keyButton').onclick=async()=>{
     }
     JUDGE_KEY=data.data.api_key;
     out.hidden=false;out.textContent=JUDGE_KEY;
-    note.textContent=`${data.data.quota_per_window} calls per ${Math.round(data.data.window_seconds/60)} minutes on the two endpoints that spend tokens. Nothing about this key is stored server side — it is an HMAC over its own claims.`;
+    note.textContent=`${data.data.quota_per_window} calls per ${Math.round(data.data.window_seconds/60)} minutes on the two endpoints that spend tokens. Nothing about this key is stored server side; it is an HMAC over its own claims.`;
     renderSnippet();
     try{await navigator.clipboard.writeText(JUDGE_KEY);b.textContent='Copied to clipboard';}
     catch(e){b.textContent='Key issued';}

@@ -78,8 +78,8 @@ def render_report(record: DeliveryRecord, gate: JeopardyResult) -> str:
         for job in record.jobs:
             add(
                 f"| {job.spec_name} | {job.status} | {job.duration_seconds:.3f} | {job.exit_code} | "
-                f"{job.retries} | {job.output_bytes} | {job.failure_class or '—'} | "
-                f"{', '.join(job.qc_failures) or '—'} |"
+                f"{job.retries} | {job.output_bytes} | {job.failure_class or 'none'} | "
+                f"{', '.join(job.qc_failures) or 'none'} |"
             )
         add("")
         add(

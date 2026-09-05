@@ -24,7 +24,9 @@ from .gate import evaluate_jeopardy
 from .grafana_mcp import (
     GrafanaMcp,
     GrafanaNotConfigured,
+    REQUIREMENT_COVERAGE,
     TOOLS_DECLINED,
+    TOOLS_UNUSUAL,
     TOOLS_USED,
     create_delivery_alert_rule,
     delete_alert_rule,
@@ -193,7 +195,9 @@ def grafana_inventory() -> dict[str, object]:
         "data": {
             "server": "official grafana/mcp-grafana v1.1.0 over stdio",
             "tools_used": TOOLS_USED,
+            "tools_unusual": TOOLS_UNUSUAL,
             "tools_declined": TOOLS_DECLINED,
+            "requirement_coverage": list(REQUIREMENT_COVERAGE),
             "live_confirmation": "/v1/integrations/grafana/evidence",
         }
     }
@@ -530,7 +534,7 @@ async def analyze_promql(
 
     The three queries the agents run are fixed on purpose, because an agent that
     can compose arbitrary queries can also compose a misleading one. That is a
-    deliberate constraint on the agent, not a limit of the integration — so this
+    deliberate constraint on the agent, not a limit of the integration, and so this
     endpoint hands the same MCP path to a person and returns the server's raw
     response, unedited.
 

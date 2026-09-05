@@ -17,7 +17,7 @@ them for themselves.
 
 - **Five classifier cases is engineering evidence, not a statistical claim.** The
   classifier recovers the failure class from FFmpeg's own stderr, exit status,
-  output size and QC result, and it cannot read the injected scenario — a test
+  output size and QC result, and it cannot read the injected scenario, and a test
   asserts that. That makes the result non-circular. It does not make it a
   population-level accuracy measurement.
 - **The gate fixtures are constructed.** The schedule histories in
@@ -49,8 +49,8 @@ them for themselves.
 
 - The stack is **self-hosted Grafana OSS**, not Grafana Cloud. The contest rules
   permit the open-source MCP server with a service-account token for unattended
-  deployments, which is what this is. Grafana Cloud-only capabilities — the SLO
-  app, IRM, Sift, OnCall — are therefore unavailable and are not used or implied.
+  deployments, which is what this is. Grafana Cloud-only capabilities, namely the SLO
+  app, IRM, Sift and OnCall, are therefore unavailable and are not used or implied.
 - **AI Observability wording.** SLATE emits OpenTelemetry `gen_ai.*` spans and
   Prometheus counters for per-agent token usage, operation duration and MCP tool
   activity, and reads them back through the official Grafana MCP server. These
