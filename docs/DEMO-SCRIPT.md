@@ -1,4 +1,4 @@
-# Demo video script: 2:44
+# Demo video script: 2:43
 
 Hard limit 3:00; only the first 3:00 is evaluated.
 
@@ -13,7 +13,7 @@ that sentence.
 words at 165 wpm, takes the measured execution time declared in each beat, and costs every beat
 at `max(talking, waiting)`, because talking over a wait is free, and you cannot talk for forty
 seconds over a five second click. Re-run it after any edit to the narration; it has twice caught
-a runtime the author had estimated wrong by hand. Current estimate: **2:44, sixteen seconds of
+a runtime the author had estimated wrong by hand. Current estimate: **2:43, seventeen seconds of
 margin.** `--fix-headings` renumbers the beats from those same costs, so the timestamps cannot
 drift out of step with the narration.
 
@@ -93,6 +93,13 @@ script will work without it.
 everything the rehearsal created and puts the three contract titles back to fresh dates, then
 press **Run 20s judge proof** and wait for the pill to read `at_risk`. That is the same state the
 command above produces, without leaving the browser.
+
+**Press *Get a free API key* before you rehearse.** It is on the page, above the agent panel.
+Anonymous visitors get **4 investigations per 10 minutes**; a key raises that to **20**. Beat 4
+runs one investigation, and a *failed* attempt still spends a slot, so four rehearsal takes inside
+ten minutes will hand you a 429 on the fifth. The end-to-end checker rate-limited itself this way
+and reported the 429 as a product failure, which is how the limit was found. The key is free,
+needs no signup, and lasts the session.
 
 - Browser at 1440x900, zoom 100%, signed out, no extensions visible.
 - One tab. Everything in this script is on the one page.
