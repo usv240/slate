@@ -1193,12 +1193,18 @@ $('#missProof').onclick=async()=>{
   b.disabled=true;
   const say=t=>out.replaceChildren(mkel('div',t,'empty'));
   try{
-    say('Creating a delivery with eight heavy renditions, a fifty second window, and no injected fault...');
+    // Twelve versions against a forty second window, not eight against fifty.
+    // Only three are encoded here, one per wave, so this costs the same wall
+    // clock; the other nine are outstanding work the gate has to project. With
+    // eight and fifty the proof only opened when the container happened to be
+    // encoding slowly, and it silently did not open when it was fast, which is
+    // the worst way for a demonstration to fail.
+    say('Creating a delivery with twelve heavy renditions, a forty second window, and no injected fault...');
     const specs=[];
-    for(let i=0;i<8;i++)specs.push({name:'uhd'+i,width:1920,height:1080,video_codec:'libx265',video_bitrate_kbps:12000});
+    for(let i=0;i<12;i++)specs.push({name:'uhd'+i,width:1920,height:1080,video_codec:'libx265',video_bitrate_kbps:12000});
     const created=await (await fetch('/v1/deliveries',{method:'POST',headers:{'content-type':'application/json'},
       body:JSON.stringify({title:'Aurora Line S2 - HDR delivery ladder',
-        contractual_date:new Date(Date.now()+50000).toISOString(),
+        contractual_date:new Date(Date.now()+40000).toISOString(),
         penalty_tier:'premiere',fault_mode:'none',specs})})).json();
     const id=created.data.delivery_id;
     for(let wave=1;wave<=3;wave++){
@@ -1209,6 +1215,11 @@ $('#missProof').onclick=async()=>{
       say('Wave '+wave+': '+d.jobs.length+' encoded, '+failures+' failures, '+d.pending_specs+
           ' still to do. Work left '+fmtDuration(j.work_remaining_seconds)+
           ', window left '+fmtDuration(j.delivery_window_seconds)+' - '+j.verdict.toUpperCase());
+      if(wave===3&&j.verdict!=='at_risk'){
+        say('Wave 3 finished and the gate did not open: this container encoded faster than the '+
+            'window is tight, so the work still fits. Nothing is broken. Press the button again, '+
+            'or add renditions in the builder, to put the delivery back under real time pressure.');
+      }
       if(wave<3)await pause(6000);
     }
     await load();

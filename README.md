@@ -38,17 +38,10 @@ schedule_budget = delivery_window - work_remaining      # below zero: projected 
 
 Open the app and press **Prove it: a miss with zero failures**.
 
-It creates eight heavy encodes against a fifty second window with **no fault injected**, and runs
-them in waves with real FFmpeg. Every one passes. By the third wave there is more work left than
-window:
-
-| | wave 1 | wave 2 | wave 3 |
-|---|---|---|---|
-| failures | 0 | 0 | 0 |
-| still to encode | 7 | 6 | 5 |
-| measured work left | 34.8s | 33.8s | 28.1s |
-| window left | 43.3s | 31.1s | 19.9s |
-| verdict | healthy | healthy | **at_risk** |
+It creates a delivery of **twelve** heavy versions against a **forty second** window with **no
+fault injected**, then encodes three of them, one per wave, with real FFmpeg. Every one passes.
+The other nine are outstanding work the gate has to project, and by the third wave there is more
+work left than there is window.
 
 Three detectors are then run over that same measured data:
 

@@ -128,7 +128,7 @@ things breaking, not for whether the work still fits."**
 > **POINT:** The status line directly under the button as each wave lands. The words you want are
 > **0 failures**, and they stay there.
 
-**"So watch this. Eight renditions, a fifty-second window, and I'm injecting no fault at all.
+**"So watch this. Twelve renditions, a forty-second window, and I'm injecting no fault at all.
 Every encode is going to pass."**
 
 > *Wave 1 lands.*
@@ -154,8 +154,13 @@ longer fits before the deadline."**
 
 > **DO:** Nothing at all. When the third wave lands the page scrolls itself to the detector
 > comparison, and the green **What the warning buys you** panel renders under it. Keep still.
-> **POINT:** The card headed **Invisible miss**, then its three rows top to bottom:
-> `any_failure`, `deadline_passed`, `slate_gate`. Then move down to the green panel.
+> **POINT:** The first card, **Aurora Line S2**, which is the delivery you just created. Its
+> label reads **Invisible miss**. Then its three rows top to bottom: `any_failure`,
+> `deadline_passed`, `slate_gate`. Then move down to the green panel.
+>
+> *If that card is not labelled Invisible miss, the gate did not open in beat 2 and the proof said
+> so on screen. Stop, press **Reset the board**, and start again. Everything from here depends on
+> it.*
 
 **"Here's what three detectors say about that exact run. A failure alert: silent. Nothing failed.
 A deadline check: silent, because the deadline hasn't passed. SLATE fired while there was still
