@@ -126,13 +126,28 @@ def _miss_proof_config():
     return int(const.group(2)), float(const.group(1))
 
 
-#: Seconds the proof spends before wave three's gate evaluation that are not
-#: encoding: creating the delivery, provisioning its Grafana alert rule, two six
-#: second pauses and three round trips. Measured at roughly 22.5s against the
-#: deployment. An earlier version of the test below modelled only the pauses,
-#: was wrong by ten seconds in the direction that hid the problem, and passed
-#: while the live proof opened the gate a second before the contractual date.
-PROOF_OVERHEAD_SECONDS = 22.5
+#: How much of the window is gone by wave three's gate evaluation, other than
+#: the three encodes: creating the delivery, provisioning its Grafana alert
+#: rule, two six second pauses and three round trips.
+#:
+#: Two bounds, not one, because there is no single honest value. The encodes are
+#: charged at p95 below, and p95 is the slowest of the three samples rather than
+#: their mean, so any model using it overstates the wall clock spent and
+#: understates the window that is left. 11.5s is what the live proof implies if
+#: each encode really cost p95; 22.5s is what it implies if they cost rather
+#: less. The truth is in between and moves with the container, so the proof has
+#: to hold at both ends and the tests assert both.
+#:
+#: An earlier version of this counted only the two pauses, was wrong by ten
+#: seconds in the direction that hid the problem, and passed while the live
+#: proof opened the gate one second before the contractual date.
+PROOF_OVERHEAD_BOUNDS = (11.5, 22.5)
+
+#: p95 per rendition, in seconds. This deployment has measured 3.9 to 5.6 for
+#: 1920x1080 libx265 at 12000kbps on two vCPUs. The band is widened either side
+#: of that, and deliberately not further: asserting the proof still works at
+#: 2.5s would be asserting something about a machine nobody has run it on.
+PROOF_P95_BAND = (3.5, 3.9, 4.5, 5.0, 5.6, 6.5)
 
 
 def test_the_miss_proof_payload_is_one_the_api_will_accept():
@@ -168,11 +183,15 @@ def test_the_miss_proof_opens_the_gate_at_every_speed_this_deployment_shows():
     """
 
     count, window = _miss_proof_config()
-    for p95 in (2.5, 3.0, 3.9, 5.6, 7.0):
-        work_left = (count - 3) * p95
-        window_left = window - (3 * p95 + PROOF_OVERHEAD_SECONDS)
-        assert window_left > 0, f"at p95 {p95}s the date passes before wave three"
-        assert work_left > window_left, f"at p95 {p95}s the work still fits, so the gate stays shut"
+    for p95 in PROOF_P95_BAND:
+        for overhead in PROOF_OVERHEAD_BOUNDS:
+            work_left = (count - 3) * p95
+            window_left = window - (3 * p95 + overhead)
+            assert window_left > 0, f"p95 {p95}s, overhead {overhead}s: the date passes first"
+            assert work_left > window_left, (
+                f"p95 {p95}s, overhead {overhead}s: {work_left:.1f}s of work still fits in "
+                f"{window_left:.1f}s of window, so the gate stays shut"
+            )
 
 
 def test_the_miss_the_proof_opens_is_one_added_capacity_can_still_save():
@@ -188,15 +207,16 @@ def test_the_miss_the_proof_opens_is_one_added_capacity_can_still_save():
     from slate_app.intervention import MAX_EXTRA_WORKERS
 
     count, window = _miss_proof_config()
-    for p95 in (3.9, 4.5, 5.0, 5.6):
-        work_left = (count - 3) * p95
-        window_left = window - (3 * p95 + PROOF_OVERHEAD_SECONDS)
-        best = work_left / (1 + MAX_EXTRA_WORKERS)
-        assert best <= window_left, (
-            f"at p95 {p95}s the gate opens with {window_left:.1f}s left and even "
-            f"{MAX_EXTRA_WORKERS} extra workers need {best:.1f}s, so the honest "
-            f"answer is that nothing recovers it"
-        )
+    for p95 in PROOF_P95_BAND:
+        for overhead in PROOF_OVERHEAD_BOUNDS:
+            work_left = (count - 3) * p95
+            window_left = window - (3 * p95 + overhead)
+            best = work_left / (1 + MAX_EXTRA_WORKERS)
+            assert best <= window_left, (
+                f"p95 {p95}s, overhead {overhead}s: the gate opens with {window_left:.1f}s "
+                f"left and even {MAX_EXTRA_WORKERS} extra workers need {best:.1f}s, so the "
+                f"honest answer is that nothing recovers it"
+            )
 
 
 def test_the_page_and_the_end_to_end_checker_agree_on_the_window():
