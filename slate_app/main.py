@@ -23,6 +23,7 @@ from .access import (
 from .gate import evaluate_jeopardy
 from .intervention import outcomes as intervention_outcomes
 from .fixtures import refresh as refresh_board_fixtures
+from .fixtures import window_hours as fixture_window_hours
 from .grafana_mcp import (
     GrafanaMcp,
     GrafanaNotConfigured,
@@ -727,6 +728,45 @@ def list_deliveries() -> dict[str, object]:
         except Exception as exc:  # noqa: BLE001 - the board must still render
             event("board_fixture_refresh_failed", error=type(exc).__name__)
     return {"data": [record.model_dump(mode="json") for record in store.list()]}
+
+
+@app.post("/v1/board/reset")
+async def reset_board() -> dict[str, object]:
+    """Put the board back to what a first visitor should see.
+
+    Rehearsing the demo leaves things behind: a judge proof that has been
+    recovered, a miss proof stopped half way. Nothing is wrong with any of it,
+    and it is deliberately not undone on reload, because a delivery somebody
+    created is theirs until they say otherwise. It is one click instead.
+
+    Everything a visitor created is removed, along with the Grafana alert rule
+    provisioned with it, and the three board fixtures are rolled forward to
+    fresh dates. Their measurements are kept, because those came from real runs
+    and inventing new ones would be the one thing this project does not do.
+    """
+
+    removed: list[str] = []
+    for record in store.list():
+        if fixture_window_hours(record) is not None:
+            continue
+        rule_uid = (record.alert_rule or {}).get("uid")
+        if isinstance(rule_uid, str):
+            try:
+                await delete_alert_rule(rule_uid)
+            except Exception:  # noqa: BLE001 - a stale rule must not block a reset
+                pass
+        store.delete(record.delivery_id)
+        removed.append(record.title)
+
+    rolled = refresh_board_fixtures(store, force=True)
+    event("board_reset", removed=len(removed), rolled=len(rolled["rolled_forward"]))
+    return {
+        "data": {
+            "removed": removed,
+            "fixtures_reset": rolled["rolled_forward"],
+            "next_step": "Press Run 20s judge proof to put an at_risk delivery back on the board.",
+        }
+    }
 
 
 @app.get("/v1/board/fixtures")

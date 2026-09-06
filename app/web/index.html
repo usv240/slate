@@ -535,6 +535,7 @@
       </select>
       <button class="primary" type="submit">Add delivery</button>
       <button class="secondary" id="proofButton" type="button">Run 20s judge proof</button>
+      <button class="secondary" id="resetBoard" type="button" title="Remove everything visitors created and put the three contract titles back to fresh dates">Reset the board</button>
     </form>
     <div class="board" id="board"><div class="empty">No delivery records yet. Add one above; nothing is pre-seeded as live telemetry.</div></div>
     <section class="inv" id="inv" hidden aria-live="polite"></section>
@@ -1565,6 +1566,21 @@ $('#panelButton').onclick=async()=>{
     wrap.scrollIntoView({behavior:'smooth',block:'nearest'});
   }catch(e){out.replaceChildren(mkel('div','Panel render failed: '+e.message,'empty'))}
   finally{b.disabled=false;b.textContent='Render the panel through MCP'}
+};
+
+/* ---------- board reset ---------- */
+// Rehearsing the demo leaves a recovered judge proof and half-run miss proofs
+// behind. Deliberately not automatic on reload: a delivery someone created is
+// theirs until they say otherwise.
+$('#resetBoard').onclick=async()=>{
+  const b=$('#resetBoard');b.disabled=true;const original=b.textContent;b.textContent='Resetting…';
+  try{
+    const r=await fetch('/v1/board/reset',{method:'POST',headers:{'content-length':'0'}});
+    const data=await r.json();
+    await load();
+    showProof(r.ok?'BOARD RESET':'RESET FAILED',data);
+    document.querySelector('#board').scrollIntoView({behavior:'smooth',block:'start'});
+  }finally{b.disabled=false;b.textContent=original}
 };
 
 /* ---------- judge proof ---------- */

@@ -86,3 +86,31 @@ def test_stale_one_off_deliveries_are_dropped_so_the_board_stays_readable():
     result = refresh(store)
     assert len(result["pruned"]) == 1
     assert [r.title for r in store.list()] == ["Run from ten minutes ago"]
+
+
+def test_reset_clears_what_a_rehearsal_leaves_but_keeps_the_measurements():
+    """Running the demo repeatedly leaves debris. Resetting is not the same as
+    wiping: the fixtures keep the durations real FFmpeg produced, because
+    inventing new ones is the one thing this project does not do."""
+
+    store = DeliveryStore()
+    store.put(make("Salt Road documentary trailer", hours_from_now=1, status="at_risk", fixture=9.0))
+    before = store.list()[0].p95_seconds_per_spec
+
+    result = refresh(store, force=True)
+
+    record = store.list()[0]
+    assert record.status == "healthy"
+    assert record.contractual_date > datetime.now(timezone.utc) + timedelta(hours=8)
+    assert record.p95_seconds_per_spec == before
+    assert len(record.jobs) == 1
+    assert "Salt Road documentary trailer" in result["rolled_forward"]
+
+
+def test_reset_leaves_a_healthy_fixture_rolled_rather_than_untouched():
+    """Without force, a fixture nowhere near its date is deliberately skipped."""
+
+    store = DeliveryStore()
+    store.put(make("Harbour Lights feature master", hours_from_now=20, fixture=26.0))
+    assert refresh(store)["rolled_forward"] == []
+    assert refresh(store, force=True)["rolled_forward"] == ["Harbour Lights feature master"]

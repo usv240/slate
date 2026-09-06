@@ -66,8 +66,13 @@ def window_hours(record: DeliveryRecord) -> float | None:
     return known[0] if known else None
 
 
-def refresh(store: Any, now: datetime | None = None) -> dict[str, Any]:
-    """Roll expiring fixtures forward and drop stale one-off deliveries."""
+def refresh(store: Any, now: datetime | None = None, *, force: bool = False) -> dict[str, Any]:
+    """Roll expiring fixtures forward and drop stale one-off deliveries.
+
+    `force` rolls every fixture whether or not it is close to its date, which
+    is what a deliberate board reset wants: rehearsing the demo leaves a
+    fixture mid-run, and the point of a reset is to undo that.
+    """
 
     now = now or datetime.now(timezone.utc)
     rolled: list[str] = []
@@ -89,14 +94,14 @@ def refresh(store: Any, now: datetime | None = None) -> dict[str, Any]:
             adopted.append(record.title)
             changed = True
 
-        if record.contractual_date <= now + timedelta(hours=REFRESH_MARGIN_HOURS):
+        if force or record.contractual_date <= now + timedelta(hours=REFRESH_MARGIN_HOURS):
             record.contractual_date = now + timedelta(hours=hours)
             # Burn is measured between observations against a date. Carrying the
             # old observations across a new date would compute a rate from two
             # different contracts.
             record.burn_observations = []
             record.recovering = False
-            if record.status in {"at_risk", "degraded", "failed"}:
+            if force or record.status in {"at_risk", "degraded", "failed"}:
                 record.status = "healthy" if record.package_complete else "queued"
             record.updated_at = now
             rolled.append(record.title)

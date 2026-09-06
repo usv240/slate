@@ -89,6 +89,11 @@ open, because one blip is deliberately not evidence. That is the product working
 If the top card says `degraded` instead of `at_risk`, run the command again. Nothing else in this
 script will work without it.
 
+**Between takes, you do not need the terminal.** Press **Reset the board**, which removes
+everything the rehearsal created and puts the three contract titles back to fresh dates, then
+press **Run 20s judge proof** and wait for the pill to read `at_risk`. That is the same state the
+command above produces, without leaving the browser.
+
 - Browser at 1440x900, zoom 100%, signed out, no extensions visible.
 - One tab. Everything in this script is on the one page.
 - **Use the navbar, not the scrollbar.** Every move in this script is one click.
