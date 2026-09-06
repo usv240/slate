@@ -363,10 +363,10 @@
     <a class="mark" href="/">SLATE / DELIVERY CONTROL</a>
     <div class="navlinks">
       <a href="#start">Start here</a>
+      <a href="#blindspot">Blind spot</a>
       <a href="#byo">Bring your own</a>
       <a href="#board">Board</a>
       <a href="#panel">Panel read</a>
-      <a href="#blindspot">Blind spot</a>
       <a href="#partner">Grafana MCP</a>
       <a href="#boundary">Boundary</a>
     </div>
@@ -481,6 +481,20 @@
     </div>
   </section>
 
+  <section id="blindspot">
+    <div class="section-head">
+      <div><div class="eyebrow">Why this is not just monitoring</div><h2>What a failure alert cannot see.</h2></div>
+      <div class="keyrow" style="margin:0">
+        <button class="primary" id="missProof" type="button">Prove it: a miss with zero failures</button>
+        <button class="secondary" id="cmpRun" type="button">Compare the detectors</button>
+      </div>
+    </div>
+    <p class="quiet plain">A delivery can be going to miss its contractual date while nothing has failed at all. An alert that watches for failures is silent for that, right up to the deadline. Every delivery on the board is put through three detectors below, on the same measured data.</p>
+    <p class="quiet technical">Each verdict is computed from that delivery's measured p95, its real job results and its real burn observations. Nothing is projected. <code>/v1/evaluation/detectors</code></p>
+    <div id="cmpOut"></div>
+    <div class="buys" id="buyOut" hidden></div>
+  </section>
+
   <section id="deliveries">
     <div class="section-head">
       <div><div class="eyebrow">Live control board</div><h2>Every title. One immovable date.</h2></div>
@@ -527,6 +541,20 @@
     <pre class="proof" id="proof" hidden aria-live="polite"></pre>
   </section>
 
+  <section id="query">
+    <div class="section-head">
+      <div><div class="eyebrow">Bring your own query</div><h2>The MCP path is general, not three canned calls.<span class="info" tabindex="0" role="note" data-tip="The agents are restricted to three fixed queries on purpose, because an agent free to write any query can write a misleading one. That restriction is on the agent, not the integration: type anything here and it goes down the same path." aria-label="What this means: The agents are restricted to three fixed queries on purpose, because an agent free to write any query can write a misleading one. That restriction is on the agent, not the integration: type anything here and it goes down the same path.">i</span></h2></div>
+    </div>
+    <p class="quiet plain">The agents run three fixed queries on purpose, because an agent free to compose any query can also compose a misleading one. That is a limit we put on the agent, not on the integration. Type your own PromQL and it goes through the same official Grafana MCP server.</p>
+    <p class="quiet technical">Posts to <code>/v1/analyze/promql</code>, which calls <code>query_prometheus</code> over the official <code>mcp-grafana</code> stdio transport and returns the server's raw response. Read only.</p>
+    <div class="chips" id="promqlChips"></div>
+    <div class="promqlrow">
+      <input id="promql" value="sum by (failure_class) (slate_job_failures_total)" aria-label="PromQL expression" spellcheck="false">
+      <button class="primary" id="promqlRun" type="button">Run through MCP</button>
+    </div>
+    <pre class="proof" id="promqlOut" hidden aria-live="polite"></pre>
+  </section>
+
   <section id="panel">
     <div class="section-head">
       <div><div class="eyebrow">Closing the loop</div><h2>The agent reads the supervisor's chart.</h2></div>
@@ -537,19 +565,7 @@
     <div id="panelOut"></div>
   </section>
 
-  <section id="blindspot">
-    <div class="section-head">
-      <div><div class="eyebrow">Why this is not just monitoring</div><h2>What a failure alert cannot see.</h2></div>
-      <div class="keyrow" style="margin:0">
-        <button class="primary" id="missProof" type="button">Prove it: a miss with zero failures</button>
-        <button class="secondary" id="cmpRun" type="button">Compare the detectors</button>
-      </div>
-    </div>
-    <p class="quiet plain">A delivery can be going to miss its contractual date while nothing has failed at all. An alert that watches for failures is silent for that, right up to the deadline. Every delivery on this board is put through three detectors below, on the same measured data.</p>
-    <p class="quiet technical">Each verdict is computed from that delivery's measured p95, its real job results and its real burn observations. Nothing is projected. <code>/v1/evaluation/detectors</code></p>
-    <div id="cmpOut"></div>
-    <div class="buys" id="buyOut" hidden></div>
-  </section>
+
 
   <section id="partner">
     <div class="section-head">
@@ -564,19 +580,7 @@
     <div class="declines" id="mcpDeclines"></div>
   </section>
 
-  <section id="query">
-    <div class="section-head">
-      <div><div class="eyebrow">Bring your own query</div><h2>The MCP path is general, not three canned calls.<span class="info" tabindex="0" role="note" data-tip="The agents are restricted to three fixed queries on purpose, because an agent free to write any query can write a misleading one. That restriction is on the agent, not the integration: type anything here and it goes down the same path." aria-label="What this means: The agents are restricted to three fixed queries on purpose, because an agent free to write any query can write a misleading one. That restriction is on the agent, not the integration: type anything here and it goes down the same path.">i</span></h2></div>
-    </div>
-    <p class="quiet plain">The agents run three fixed queries on purpose, because an agent free to compose any query can also compose a misleading one. That is a limit we put on the agent, not on the integration. Type your own PromQL and it goes through the same official Grafana MCP server.</p>
-    <p class="quiet technical">Posts to <code>/v1/analyze/promql</code>, which calls <code>query_prometheus</code> over the official <code>mcp-grafana</code> stdio transport and returns the server's raw response. Read only.</p>
-    <div class="chips" id="promqlChips"></div>
-    <div class="promqlrow">
-      <input id="promql" value="sum by (failure_class) (slate_job_failures_total)" aria-label="PromQL expression" spellcheck="false">
-      <button class="primary" id="promqlRun" type="button">Run through MCP</button>
-    </div>
-    <pre class="proof" id="promqlOut" hidden aria-live="polite"></pre>
-  </section>
+
 
   <section class="gate" id="boundary">
     <div>

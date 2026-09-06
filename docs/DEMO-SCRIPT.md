@@ -91,8 +91,12 @@ script will work without it.
 
 - Browser at 1440x900, zoom 100%, signed out, no extensions visible.
 - One tab. Everything in this script is on the one page.
-- **Use the navbar, not the scrollbar.** Board, Bring your own, Grafana MCP, Blind spot and Panel
-  read are one click each, and beats 4 to 6 depend on moving quickly while the agents work.
+- **Use the navbar, not the scrollbar.** Every move in this script is one click.
+- **The navbar is in the order you will use it.** The page was reordered so the story runs top to
+  bottom: Start here, Blind spot, Bring your own, Board, Panel read, Grafana MCP, Boundary. Your
+  path through the video is mostly left to right along that bar, which matters because a judge is
+  watching the highlight move. The only two backward steps are returning to Board after beat 5,
+  and returning to Panel read for the reveal in beat 8.
 - Do one silent dry run. The buttons are the script.
 
 ---
