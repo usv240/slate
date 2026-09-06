@@ -889,24 +889,45 @@ async def investigate(
     # while this request path demonstrably invokes the real Google ADK runner.
     from .adk_app import AgentRuntimeNotConfigured, run_investigation
 
-    try:
-        report = await run_investigation(record, gate, operator_id=request.operator_id)
-    except (AgentRuntimeNotConfigured, GrafanaNotConfigured) as exc:
-        raise HTTPException(
-            503,
-            detail={"code": "agent_runtime_not_configured", "message": str(exc)},
-        ) from exc
-    except Exception as exc:
-        event(
-            "agent_investigation_failed",
-            delivery_id=delivery_id,
-            operator_id=request.operator_id,
-            error_type=type(exc).__name__,
-        )
+    # The workflow refuses to report an investigation that did not actually
+    # happen: if Watch never fetched its bound evidence, or any of the three
+    # agents returned nothing, it raises rather than rendering a partial result
+    # as though it were whole. Those guards are right and stay.
+    #
+    # What was wrong was the consequence. A model that occasionally returns an
+    # empty part turned a recoverable hiccup into a dead end, and the response
+    # said only that it "did not complete", so nobody could tell a model hiccup
+    # from a broken deployment. One retry, and the actual reason either way.
+    report = None
+    first_error: Exception | None = None
+    for attempt in (1, 2):
+        try:
+            report = await run_investigation(record, gate, operator_id=request.operator_id)
+            break
+        except (AgentRuntimeNotConfigured, GrafanaNotConfigured) as exc:
+            raise HTTPException(
+                503,
+                detail={"code": "agent_runtime_not_configured", "message": str(exc)},
+            ) from exc
+        except Exception as exc:  # noqa: BLE001 - reported below with its reason
+            first_error = first_error or exc
+            event(
+                "agent_investigation_failed",
+                delivery_id=delivery_id,
+                operator_id=request.operator_id,
+                attempt=attempt,
+                error_type=type(exc).__name__,
+                reason=str(exc)[:300],
+            )
+    if report is None:
+        exc = first_error or RuntimeError("unknown")
         raise HTTPException(
             502,
             detail={
                 "code": "agent_investigation_failed",
+                "reason": str(exc)[:300],
+                "error_type": type(exc).__name__,
+                "attempts": 2,
                 "message": "The Google ADK investigation did not complete; no verdict or remediation was changed.",
             },
         ) from exc

@@ -1079,13 +1079,9 @@ async function investigate(id,b){
   try{
     b.textContent='Agents investigating…';
     let res=await attempt();
-    // A 5xx here has twice been seen to succeed immediately afterwards, so one
-    // retry, said out loud rather than hidden.
-    if(!res.ok&&res.status>=500){
-      b.textContent='Retrying…';
-      showProof('FIRST ATTEMPT DID NOT COMPLETE, RETRYING ONCE',res.body);
-      res=await attempt();
-    }
+    // The server already retries once internally, and each call costs the
+    // caller a slot of their allowance, so a retry here would be a third
+    // attempt charged twice. Report what came back instead.
     const d=res.body&&res.body.data;
     if(res.ok&&d&&d.outputs){$('#proof').hidden=true;renderInvestigation(res.body,id);return}
     if(res.ok&&d&&d.status==='abstained'){
