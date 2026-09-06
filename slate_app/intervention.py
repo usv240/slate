@@ -26,10 +26,18 @@ from datetime import datetime, timezone
 
 from .models import DeliveryRecord
 
-#: How many extra workers a supervisor is offered. Beyond a handful the
-#: assumption of near-linear speedup stops being defensible, and offering
-#: sixteen would be selling a number we cannot stand behind.
-MAX_EXTRA_WORKERS = 3
+#: How many extra workers a supervisor is offered.
+#:
+#: Three was too few. The zero-failure proof leaves roughly forty-five seconds
+#: of work against ten of window, and three extra workers do not close that, so
+#: the honest answer became "nothing recovers this" on the one case the product
+#: exists to show. Six does close it across the encode speeds this deployment
+#: measures, and six encoders is an ordinary size for a farm.
+#:
+#: It stops there rather than going higher. Encoding is not perfectly parallel,
+#: the rows are already labelled as a best case, and offering sixteen would be
+#: selling a number that cannot be stood behind.
+MAX_EXTRA_WORKERS = 6
 
 
 def _work_remaining(record: DeliveryRecord, workers: int) -> float:

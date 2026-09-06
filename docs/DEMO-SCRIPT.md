@@ -168,11 +168,15 @@ time to act."**
 
 > *Point at the green panel.*
 
-**"And this is what that time is worth. Do nothing, and it misses. Approve one more worker, and
-it lands with seconds to spare."**
+**"And this is what that time is worth. Do nothing, and it misses. Add encoding capacity, and it
+lands with seconds to spare."**
 
-> *The exact figures change on every run. Read the two the panel actually shows, or say it as
-> written above and let the screen supply the numbers. Never quote a rehearsed figure.*
+> *Read the panel, do not recite it. It prints the exact figures and how many workers it takes,
+> and both move with how fast the container is encoding.*
+>
+> *If it says no amount of capacity recovers this, say that instead:* **"and by this point no
+> amount of extra capacity saves it, which is exactly why the warning had to come earlier."**
+> *That is the stronger line of the two, not the weaker one.*
 
 
 ---
