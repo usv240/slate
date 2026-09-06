@@ -283,10 +283,14 @@ Do not re-record from the top. Each of these is recoverable in one sentence:
 
 - **A wave runs slow and the gate opens on wave two.** Say *"there it is, a wave early"* and carry
   on. The point is that it opened with zero failures, not which wave it was.
-- **You press Ask ADK agents and get an abstention.** You are on the wrong card, or that card is
-  `degraded` rather than `at_risk`. Say *"the gate has not opened on this one, so the agents
-  refuse to run and no model is called"*, which is true and is a point in your favour, then press
-  it on the right card.
+- **You press Ask ADK agents and get an abstention.** The banner will say
+  `AGENT ABSTAINED: DETERMINISTIC GATE NOT PASSED, NO MODEL CALLED`. You are on the wrong card, or
+  that card is `degraded` rather than `at_risk`. Say *"the gate has not opened on this one, so the
+  agents refuse to run and no model is called"*, which is true and is a point in your favour, then
+  press it on the right card.
+- **The banner says `INVESTIGATION DID NOT COMPLETE`.** That is a fault, not a refusal, and the
+  page has already retried once. Press **Ask ADK agents** again: this has been transient every
+  time it has happened. Say nothing about it; a second press reads as a second press.
 - **The investigation runs past 47s.** Stay in beat 5 and say one more line about the builder.
   It is the one beat you can stretch, because nothing there is on a clock.
 - **The MCP query in beat 5 errors.** Say *"and that is the server's own error text, not ours"*

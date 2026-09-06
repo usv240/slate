@@ -1067,12 +1067,32 @@ function showProof(label,data){
 }
 
 async function investigate(id,b){
-  b.disabled=true;const original=b.textContent;b.textContent='Agents investigating…';
-  try{
+  // Three outcomes, and they used to be reported as one. Anything that was not
+  // a rendered investigation said "AGENT ABSTAINED", so a server error claimed
+  // to be a designed refusal. An abstention is a feature; a 502 is a fault, and
+  // presenting the second as the first is the worst kind of wrong.
+  b.disabled=true;const original=b.textContent;
+  const attempt=async()=>{
     const r=await fetch(`/v1/jeopardy/${id}/investigate`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({operator_id:'web-judge'})});
-    const data=await r.json();
-    if(r.ok&&data.data&&data.data.outputs){$('#proof').hidden=true;renderInvestigation(data,id)}
-    else showProof('AGENT ABSTAINED: DETERMINISTIC GATE NOT PASSED',data);
+    return {ok:r.ok,status:r.status,body:await r.json()};
+  };
+  try{
+    b.textContent='Agents investigating…';
+    let res=await attempt();
+    // A 5xx here has twice been seen to succeed immediately afterwards, so one
+    // retry, said out loud rather than hidden.
+    if(!res.ok&&res.status>=500){
+      b.textContent='Retrying…';
+      showProof('FIRST ATTEMPT DID NOT COMPLETE, RETRYING ONCE',res.body);
+      res=await attempt();
+    }
+    const d=res.body&&res.body.data;
+    if(res.ok&&d&&d.outputs){$('#proof').hidden=true;renderInvestigation(res.body,id);return}
+    if(res.ok&&d&&d.status==='abstained'){
+      showProof('AGENT ABSTAINED: DETERMINISTIC GATE NOT PASSED, NO MODEL CALLED',res.body);
+      return;
+    }
+    showProof('INVESTIGATION DID NOT COMPLETE (HTTP '+res.status+')',res.body);
   }finally{b.disabled=false;b.textContent=original}
 }
 
