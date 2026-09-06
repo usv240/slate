@@ -29,13 +29,38 @@ from threading import Lock
 KEY_PREFIX = "slate_"
 KEY_TTL_SECONDS = 14 * 24 * 3600
 
-#: requests per window, per caller, for the endpoints that spend tokens
-ANONYMOUS_QUOTA = 4
-KEYED_QUOTA = 20
-#: PromQL is a cheap read against our own Prometheus, so it gets a wider bucket
-#: than the endpoints that spend Gemini tokens.
-PROMQL_QUOTA = 30
+#: Requests per window, per caller, for the endpoints that spend tokens.
+#:
+#: These were 4 and 20, and 4 was wrong. Both paid endpoints share one bucket
+#: keyed by IP, so a single visitor who ran one investigation and then clicked
+#: the panel reading three times was rate limited, having done nothing unusual.
+#: Worse, anonymous callers are bucketed by IP alone, so two people behind one
+#: office NAT shared those four between them. The end-to-end checker tripped
+#: over this and reported the 429 as a product failure.
+#:
+#: The number is now set from what the endpoints themselves permit rather than
+#: from a guess. An investigation takes about 30 seconds and the panel reading
+#: about 8, and the page disables its button for the duration, so the fastest a
+#: person can issue calls is roughly one per 8 seconds: at most 75 in a ten
+#: minute window, from one browser, clicking continuously and reading nothing.
+#: Anything at or above that cannot refuse a human being.
+#:
+#: A ceiling stays, because these endpoints call a paid model from a public URL
+#: and a scripted loop should not be able to empty the project's Vertex quota in
+#: the middle of judging, which is the same failure this change exists to
+#: prevent. It now sits far above anybody using the product and far below a loop.
+#: tests/test_access.py pins it against that reasoning so it cannot be quietly
+#: tightened back.
+ANONYMOUS_QUOTA = 120
+KEYED_QUOTA = 300
+#: PromQL is a cheap read against our own Prometheus, so it gets its own bucket
+#: and never competes with the endpoints that spend Gemini tokens.
+PROMQL_QUOTA = 120
 WINDOW_SECONDS = 600
+
+#: The fastest a person can drive the paid endpoints from a browser: the quicker
+#: of the two takes about 8 seconds and its button is disabled while it runs.
+FASTEST_HUMAN_CALL_SECONDS = 8
 
 
 def _secret() -> bytes:

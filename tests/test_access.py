@@ -233,3 +233,46 @@ def test_promql_reaches_the_mcp_path_and_fails_closed_without_grafana():
     )
     assert response.status_code == 503
     assert response.json()["detail"]["code"] == "grafana_mcp_not_configured"
+
+
+def test_the_anonymous_allowance_cannot_refuse_a_person_using_the_product():
+    """The limit that mattered was the one a judge could hit by clicking.
+
+    Both paid endpoints share one bucket keyed by IP. At four per ten minutes a
+    single visitor who investigated once and then read the Grafana panel three
+    times was refused, and two people behind one office NAT shared those four
+    between them.
+
+    The bound is not a matter of taste. The quicker of the two endpoints takes
+    about eight seconds and the page disables its button while it runs, so the
+    most a person can issue in the window is the window divided by that. A quota
+    at or above it cannot refuse a human being, whatever they click.
+    """
+
+    reachable_by_clicking = access.WINDOW_SECONDS / access.FASTEST_HUMAN_CALL_SECONDS
+    assert access.ANONYMOUS_QUOTA >= reachable_by_clicking, (
+        f"{access.ANONYMOUS_QUOTA} per {access.WINDOW_SECONDS}s can be reached by clicking "
+        f"({reachable_by_clicking:.0f} calls), so a judge can be refused"
+    )
+    assert access.PROMQL_QUOTA >= reachable_by_clicking
+
+
+def test_a_ceiling_still_exists_for_something_that_is_not_clicking():
+    """Removing the cap outright is the other way to fail.
+
+    These endpoints call a paid model from a public URL. A scripted loop that
+    emptied the project's Vertex quota mid-judging would break the product for
+    exactly the people this allowance was widened for.
+    """
+
+    assert access.ANONYMOUS_QUOTA < 10_000
+    decision = access.limiter.check(
+        "ip:loop", quota=access.ANONYMOUS_QUOTA, keyed=False, now=1000.0
+    )
+    assert decision.allowed
+    for _ in range(access.ANONYMOUS_QUOTA):
+        decision = access.limiter.check(
+            "ip:loop", quota=access.ANONYMOUS_QUOTA, keyed=False, now=1000.0
+        )
+    assert decision.allowed is False, "a loop inside one instant is never refused"
+    access.limiter.reset()

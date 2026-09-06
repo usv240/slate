@@ -94,12 +94,11 @@ everything the rehearsal created and puts the three contract titles back to fres
 press **Run 20s judge proof** and wait for the pill to read `at_risk`. That is the same state the
 command above produces, without leaving the browser.
 
-**Press *Get a free API key* before you rehearse.** It is on the page, above the agent panel.
-Anonymous visitors get **4 investigations per 10 minutes**; a key raises that to **20**. Beat 4
-runs one investigation, and a *failed* attempt still spends a slot, so four rehearsal takes inside
-ten minutes will hand you a 429 on the fifth. The end-to-end checker rate-limited itself this way
-and reported the 429 as a product failure, which is how the limit was found. The key is free,
-needs no signup, and lasts the session.
+**You do not need an API key.** The two endpoints that spend Gemini tokens used to allow four
+calls per ten minutes to anonymous visitors, which a single rehearsal take could exhaust; that
+was raised to 120, which is more than anyone can reach by clicking, so rehearse as often as you
+like. The *Get a free API key* button still works and is worth showing if a judge asks how the
+API is driven, but nothing in this script depends on pressing it.
 
 - Browser at 1440x900, zoom 100%, signed out, no extensions visible.
 - One tab. Everything in this script is on the one page.
