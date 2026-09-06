@@ -58,7 +58,25 @@ REQUIRED = (
     # guess before, and the rule matched only <section>, so two of the seven
     # links were landing wrong.
     ("--navh:", "the sticky bar height was never measured, so anchors land under it"),
+    # A card's slack line, and the headline stat beside it, used to come only
+    # from the last recorded burn observation. A board reset deliberately clears
+    # that history, so after one every card lost its budget and the first number
+    # a visitor reads went blank on a board that was working perfectly. The seed
+    # delivery below has no burn history on purpose: this needle is only present
+    # if the fallback computes slack from the delivery's own measurements.
+    ('class="label slack"', "a delivery with no burn history rendered no schedule budget"),
 )
+
+
+#: Posted before the page is loaded, so the board is not empty. Without it every
+#: board assertion passes vacuously against "No delivery records yet."
+SEED_DELIVERY = {
+    "title": "Page check fixture",
+    "penalty_tier": "standard",
+    "fault_mode": "none",
+    "specs": [{"name": "proxy", "width": 320, "height": 180,
+               "video_codec": "libx264", "video_bitrate_kbps": 300}],
+}
 
 def rendered_only(dom: str) -> str:
     """Strip script and style blocks before asserting on what the page *shows*.
@@ -158,6 +176,28 @@ def check_render(failures: list[str]) -> None:
                 time.sleep(0.5)
         else:
             failures.append("the server never became ready, so the page could not be loaded")
+            return
+
+        # The board has to have something on it before the page is asked to
+        # render a board.
+        try:
+            import json
+            from datetime import datetime, timedelta, timezone
+
+            body = dict(SEED_DELIVERY)
+            body["contractual_date"] = (
+                datetime.now(timezone.utc) + timedelta(hours=6)
+            ).isoformat()
+            urllib.request.urlopen(
+                urllib.request.Request(
+                    f"{base}/v1/deliveries",
+                    data=json.dumps(body).encode(),
+                    headers={"content-type": "application/json"},
+                ),
+                timeout=30,
+            ).read()
+        except Exception as exc:  # noqa: BLE001
+            failures.append(f"could not seed a delivery for the page to render: {exc}")
             return
 
         # A slower machine can finish the page after a short virtual-time budget

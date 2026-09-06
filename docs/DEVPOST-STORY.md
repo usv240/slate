@@ -36,14 +36,14 @@ jeopardy. Three things must all be true: projected completion is past the contra
 falling across two consecutive windows, and work remains. One bad moment is deliberately not
 enough to raise an alarm.
 
-**It proves the blind spot live.** One button runs eight heavy encodes against a fifty second
+**It proves the blind spot live.** One button runs sixteen heavy encodes against a sixty second
 window with **no fault injected at all**. Every encode passes. By the third wave there is more
-work left than window, and the gate opens roughly twenty seconds before the contractual date while
-an ordinary failure alert has nothing to say. That is not a claim on a slide. It is thirty seconds
-of real FFmpeg you can run yourself.
+work left than window, and the gate opens with roughly twenty seconds still on the clock while an
+ordinary failure alert has nothing to say. That is not a claim on a slide. It is thirty seconds of
+real FFmpeg you can run yourself.
 
 **It says what the warning is worth.** Alongside that result: doing nothing misses the date, and
-approving one more encoding worker lands it with seconds to spare. Arithmetic over the p95 those
+approving a couple more encoding workers lands it before the date. Arithmetic over the p95 those
 encodes just measured, not a rate card.
 
 **Three Google agents investigate, on evidence they cannot choose.** Watch, Diagnose and Remediate
@@ -117,8 +117,8 @@ pinned by a check that counts how many encodes are actually running at once.
 
 ## Accomplishments that we're proud of
 
-**The impact claim is demonstrated, not projected.** Eight versions, zero failures, and the gate
-opened before the date while a failure alert stayed silent. Measured live, and repeatable in your
+**The impact claim is demonstrated, not projected.** Sixteen versions, zero failures, and the gate
+opened with time still on the clock while a failure alert stayed silent. Measured live, and repeatable in your
 browser in about thirty seconds.
 
 **Nothing consequential is decided by a model.** The verdict is a plain function. The failure class

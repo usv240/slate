@@ -704,9 +704,27 @@ function fmtDuration(seconds){
   if(s>=60)return (seconds/60).toFixed(1)+' m';
   return seconds.toFixed(1)+' s';
 }
+/* Slack for one delivery, in seconds.
+
+   Prefer the server's own last observation: it was computed with the server's
+   clock, and it is the point the sparkline ends on. When there is none, do not
+   report nothing. A board reset deliberately clears burn history, because a
+   rate measured against the old contractual date would be a rate between two
+   different contracts, and after that every card lost its budget line and the
+   headline stat read "n/a" -- the first number a visitor sees, blank, on a
+   board that was working perfectly.
+
+   The fallback is the gate's own arithmetic from slate_app/gate.py, evaluated
+   now against measurements that are already there. Nothing is invented: with
+   no pending work it correctly reports the whole window as slack. */
 function latestBudget(x){
   const obs=x.burn_observations||[];
-  return obs.length?obs[obs.length-1].schedule_budget_seconds:null;
+  if(obs.length)return obs[obs.length-1].schedule_budget_seconds;
+  const p95=Number(x.p95_seconds_per_spec), pending=Number(x.pending_specs);
+  if(!isFinite(p95)||!isFinite(pending))return null;
+  const window=(new Date(x.contractual_date).getTime()-Date.now())/1000;
+  const work=((pending*p95)+Number(x.retry_penalty_seconds||0))/Math.max(1,Number(x.active_workers)||1);
+  return window-work;
 }
 
 /* Schedule-budget burn-down. The horizontal rule is the contractual date:
@@ -787,7 +805,7 @@ function card(x){
   contract.append(mkel('div',new Date(x.contractual_date).toLocaleString(),'value'));
   const budget=latestBudget(x);
   if(budget!==null){
-    const b=mkel('div','budget '+fmtDuration(budget),'label');
+    const b=mkel('div','budget '+fmtDuration(budget),'label slack');
     b.style.color=budget<0?'var(--bad)':'var(--muted)';
     b.append(info('Slack: time left before the date, minus the time the remaining work still needs. Positive means it fits. Negative means it is projected to miss, and the size is how badly.'));
     contract.append(b);
@@ -1172,8 +1190,9 @@ $('#cmpRun').onclick=loadComparison;
 loadComparison();
 
 /* Create a real delivery that will miss its date without anything failing, and
-   let the three detectors disagree about it on camera. Eight heavy renditions at
-   a measured five seconds each is forty seconds of work; the window is fifty. */
+   let the three detectors disagree about it on camera. MISS_SPECS heavy
+   renditions at a measured five seconds each is over a minute of work, against
+   MISS_WINDOW_S seconds of window. */
 // An earlier warning is only worth something if the time it buys can be spent.
 // Every figure here is arithmetic over the p95 these renditions just measured.
 async function loadIntervention(id){
@@ -1204,23 +1223,37 @@ async function loadIntervention(id){
   }catch(e){ host.hidden=true; }
 }
 
+//: Seconds of contract the zero-failure proof runs against. One constant so the
+//: narration on screen and the delivery it creates cannot drift apart.
+const MISS_WINDOW_S=60, MISS_SPECS=16;
 $('#missProof').onclick=async()=>{
   const b=$('#missProof'), out=$('#cmpOut');
   b.disabled=true;
   const say=t=>out.replaceChildren(mkel('div',t,'empty'));
   try{
-    // Twelve versions against a forty second window, not eight against fifty.
-    // Only three are encoded here, one per wave, so this costs the same wall
-    // clock; the other nine are outstanding work the gate has to project. With
-    // eight and fifty the proof only opened when the container happened to be
-    // encoding slowly, and it silently did not open when it was fast, which is
-    // the worst way for a demonstration to fail.
-    say('Creating a delivery with twelve heavy renditions, a forty second window, and no injected fault...');
+    // Sixteen versions, of which three are encoded here, one per wave. Only
+    // those three cost wall clock; the other thirteen are outstanding work the
+    // gate has to project, which is the whole point.
+    //
+    // Both numbers are load-bearing, and they pull against each other. Eight
+    // against fifty only opened the gate when the container happened to encode
+    // slowly. Twelve against forty opened it every time, but about a second
+    // before the contractual date, so "what the warning buys you" below could
+    // only answer "nothing recovers this" underneath the one case the product
+    // exists to show. A warning nobody can act on is not worth firing.
+    //
+    // Widening the window alone would have traded that for the gate staying
+    // shut on a fast container. Adding versions instead moves the work side
+    // without costing a second of wall clock, which buys room on both ends:
+    // sixteen against sixty opens the gate at every encode speed between two
+    // and seven seconds, and leaves fifteen to twenty-five seconds of window
+    // when it does, which added capacity can genuinely spend.
+    say('Creating a delivery with '+MISS_SPECS+' heavy renditions, a '+MISS_WINDOW_S+' second window, and no injected fault...');
     const specs=[];
-    for(let i=0;i<12;i++)specs.push({name:'uhd'+i,width:1920,height:1080,video_codec:'libx265',video_bitrate_kbps:12000});
+    for(let i=0;i<MISS_SPECS;i++)specs.push({name:'uhd'+i,width:1920,height:1080,video_codec:'libx265',video_bitrate_kbps:12000});
     const created=await (await fetch('/v1/deliveries',{method:'POST',headers:{'content-type':'application/json'},
       body:JSON.stringify({title:'Aurora Line S2 - HDR delivery ladder',
-        contractual_date:new Date(Date.now()+40000).toISOString(),
+        contractual_date:new Date(Date.now()+MISS_WINDOW_S*1000).toISOString(),
         penalty_tier:'premiere',fault_mode:'none',specs})})).json();
     const id=created.data.delivery_id;
     for(let wave=1;wave<=3;wave++){

@@ -128,7 +128,7 @@ things breaking, not for whether the work still fits."**
 > **POINT:** The status line directly under the button as each wave lands. The words you want are
 > **0 failures**, and they stay there.
 
-**"So watch this. Twelve renditions, a forty-second window, and I'm injecting no fault at all.
+**"So watch this. Sixteen renditions, a sixty second window, and I'm injecting no fault at all.
 Every encode is going to pass."**
 
 > *Wave 1 lands.*

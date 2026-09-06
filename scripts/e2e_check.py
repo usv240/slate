@@ -28,6 +28,11 @@ if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 DEFAULT_URL = "https://slate-delivery-slo-109051079423.us-central1.run.app"
+#: The zero-failure proof's own numbers. Must match MISS_WINDOW_S and MISS_SPECS
+#: in app/web/index.html, because this checks the button a judge actually presses;
+#: tests/test_web.py fails the build if the two drift apart.
+MISS_WINDOW_S, MISS_SPECS = 60, 16
+
 RESULTS: list[tuple[str, bool, str]] = []
 
 
@@ -290,17 +295,18 @@ def main() -> int:
     if not args.quick:
         section("the miss with zero failures")
         status, miss = call(base, "/v1/deliveries", "POST", {
-            "title": "E2E: zero failure miss", "contractual_date": in_seconds(40),
+            "title": "E2E: zero failure miss", "contractual_date": in_seconds(MISS_WINDOW_S),
             "penalty_tier": "premiere", "fault_mode": "none",
-            "specs": ladder(12, codec="libx265", width=1920, height=1080, kbps=12000)})
+            "specs": ladder(MISS_SPECS, codec="libx265", width=1920, height=1080, kbps=12000)})
         miss_id = miss["data"]["delivery_id"] if status == 201 else None
-        check("twelve heavy versions are accepted", status == 201, f"HTTP {status}")
-        verdicts, failures = [], 0
+        check(f"{MISS_SPECS} heavy versions are accepted", status == 201, f"HTTP {status}")
+        verdicts, failures, window_left = [], 0, 0.0
         for wave in (1, 2, 3):
             status, run = call(base, f"/v1/deliveries/{miss_id}/run?batch=1", "POST")
             jeop, rec = run.get("jeopardy", {}), run.get("data", {})
             failures = sum(1 for j in rec.get("jobs", []) if j["status"] == "failed")
             verdicts.append(jeop.get("verdict"))
+            window_left = jeop.get("delivery_window_seconds", 0)
             print(f"       wave {wave}: {failures} failures, work "
                   f"{jeop.get('work_remaining_seconds', 0):.1f}s vs window "
                   f"{jeop.get('delivery_window_seconds', 0):.1f}s -> {jeop.get('verdict')}")
@@ -309,6 +315,11 @@ def main() -> int:
         check("nothing failed at any point", failures == 0, f"{failures} failures")
         check("the gate opened anyway", verdicts[-1] == "at_risk", str(verdicts))
         check("and not before it should", verdicts[0] == "healthy", str(verdicts))
+        # The README claims the gate fires with roughly twenty seconds still on
+        # the clock. It once fired with 1.4s left, which is technically before
+        # the date and worth nothing to anybody. Assert the claim, not the sign.
+        check("it fires with time still on the clock", window_left >= 8,
+              f"{window_left:.1f}s of window left when the gate opened")
 
         status, det = call(base, "/v1/evaluation/detectors")
         summary = det.get("data", {}).get("summary", {}) if isinstance(det, dict) else {}
@@ -325,7 +336,13 @@ def main() -> int:
         outcome = buys.get("data", {}) if isinstance(buys, dict) else {}
         check("what the warning buys is reported", status == 200)
         check("doing nothing misses the date", outcome.get("doing_nothing_lands") is False)
-        check("and more capacity would save it", outcome.get("recoverable") is True)
+        save = outcome.get("cheapest_save") or {}
+        check("and more capacity would save it", outcome.get("recoverable") is True,
+              f"+{save.get('added_workers')} workers lands it with "
+              f"{save.get('slack_seconds')}s to spare" if save else
+              f"nothing recovers {outcome.get('pending_specs')} x "
+              f"{outcome.get('p95_seconds_per_spec')}s in "
+              f"{outcome.get('window_seconds')}s")
         call(base, f"/v1/deliveries/{miss_id}", "DELETE")
 
     # --- leave the board ready --------------------------------------------

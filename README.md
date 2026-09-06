@@ -38,19 +38,19 @@ schedule_budget = delivery_window - work_remaining      # below zero: projected 
 
 Open the app and press **Prove it: a miss with zero failures**.
 
-It creates a delivery of **twelve** heavy versions against a **forty second** window with **no
+It creates a delivery of **sixteen** heavy versions against a **sixty second** window with **no
 fault injected**, then encodes three of them, one per wave, with real FFmpeg. Every one passes.
-The other nine are outstanding work the gate has to project, and by the third wave there is more
-work left than there is window.
+The other thirteen are outstanding work the gate has to project, and by the third wave there is
+more work left than there is window.
 
 Three detectors are then run over that same measured data:
 
 - `any_failure` is **silent**. Nothing failed, and it stays silent until the date goes by.
 - `deadline_passed` is **silent**. Correct, and useless.
-- `slate_gate` **fires, about twenty seconds before the contractual date.**
+- `slate_gate` **fires, with roughly twenty seconds of window still left.**
 
-Underneath, *what the warning buys you*: doing nothing misses the date, and approving one more
-encoding worker lands it with seconds to spare. That is arithmetic over the p95 those encodes just
+Underneath, *what the warning buys you*: doing nothing misses the date, and approving a couple
+more encoding workers lands it before the date. That is arithmetic over the p95 those encodes just
 measured, not a rate card.
 
 **What this does not show**, and the page says so: SLATE does not beat a failure alert to a hard

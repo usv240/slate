@@ -122,9 +122,17 @@ def _miss_proof_config():
     page = (Path(__file__).resolve().parents[1] / "app" / "web" / "index.html").read_text(
         encoding="utf-8"
     )
-    count = int(re.search(r"for\(let i=0;i<(\d+);i\+\+\)specs\.push", page).group(1))
-    window = int(re.search(r"contractual_date:new Date\(Date\.now\(\)\+(\d+)\)", page).group(1)) / 1000
-    return count, window
+    const = re.search(r"const MISS_WINDOW_S=(\d+), MISS_SPECS=(\d+);", page)
+    return int(const.group(2)), float(const.group(1))
+
+
+#: Seconds the proof spends before wave three's gate evaluation that are not
+#: encoding: creating the delivery, provisioning its Grafana alert rule, two six
+#: second pauses and three round trips. Measured at roughly 22.5s against the
+#: deployment. An earlier version of the test below modelled only the pauses,
+#: was wrong by ten seconds in the direction that hid the problem, and passed
+#: while the live proof opened the gate a second before the contractual date.
+PROOF_OVERHEAD_SECONDS = 22.5
 
 
 def test_the_miss_proof_payload_is_one_the_api_will_accept():
@@ -155,13 +163,56 @@ def test_the_miss_proof_opens_the_gate_at_every_speed_this_deployment_shows():
 
     At wave three the delivery has count-3 versions left, each costing the
     measured p95, against whatever remains of the window after three encodes and
-    two six second pauses. Both ends matter: too fast and the work still fits,
-    too slow and the date has already gone, which is a different demonstration.
+    the fixed overhead. Both ends matter: too fast and the work still fits, too
+    slow and the date has already gone, which is a different demonstration.
     """
 
     count, window = _miss_proof_config()
     for p95 in (2.5, 3.0, 3.9, 5.6, 7.0):
         work_left = (count - 3) * p95
-        window_left = window - (3 * p95 + 12)
+        window_left = window - (3 * p95 + PROOF_OVERHEAD_SECONDS)
         assert window_left > 0, f"at p95 {p95}s the date passes before wave three"
         assert work_left > window_left, f"at p95 {p95}s the work still fits, so the gate stays shut"
+
+
+def test_the_miss_the_proof_opens_is_one_added_capacity_can_still_save():
+    """A warning nobody can act on is not worth firing.
+
+    The proof ran against a forty second window and opened the gate every time,
+    a second or so before the contractual date. Every threshold was correct and
+    the demonstration was worthless: "what the warning buys you" could only
+    answer "nothing recovers this", underneath the one case the product exists
+    to show. The window is the fix, so the window is what this pins.
+    """
+
+    from slate_app.intervention import MAX_EXTRA_WORKERS
+
+    count, window = _miss_proof_config()
+    for p95 in (3.9, 4.5, 5.0, 5.6):
+        work_left = (count - 3) * p95
+        window_left = window - (3 * p95 + PROOF_OVERHEAD_SECONDS)
+        best = work_left / (1 + MAX_EXTRA_WORKERS)
+        assert best <= window_left, (
+            f"at p95 {p95}s the gate opens with {window_left:.1f}s left and even "
+            f"{MAX_EXTRA_WORKERS} extra workers need {best:.1f}s, so the honest "
+            f"answer is that nothing recovers it"
+        )
+
+
+def test_the_page_and_the_end_to_end_checker_agree_on_the_window():
+    """Two copies of the same number, and only one of them is what a judge presses."""
+
+    import re
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    count, window = _miss_proof_config()
+    checker = (root / "scripts" / "e2e_check.py").read_text(encoding="utf-8")
+    found = re.search(r"^MISS_WINDOW_S, MISS_SPECS = (\d+), (\d+)$", checker, re.M)
+    assert (float(found.group(1)), int(found.group(2))) == (window, count)
+
+    # The narration is read aloud on camera, so it is part of the claim.
+    spoken = {"40": "forty", "50": "fifty", "55": "fifty-five", "60": "sixty"}[str(int(window))]
+    for doc in ("README.md", "docs/DEMO-SCRIPT.md", "docs/DEVPOST-STORY.md"):
+        text = (root / doc).read_text(encoding="utf-8").lower()
+        assert f"{spoken} second" in text, f"{doc} still names a different window"

@@ -21,7 +21,7 @@ def make_record(*, seconds_left: float, pending: int, p95: float, workers: int =
 
 
 def test_the_measured_miss_is_recoverable_with_one_more_worker():
-    """These are the numbers the live eight-rendition proof actually produced."""
+    """These are the numbers the live eight-rendition proof produced."""
 
     result = outcomes(make_record(seconds_left=19.9, pending=5, p95=5.63))
     assert result["doing_nothing_lands"] is False
@@ -59,3 +59,21 @@ def test_the_projection_states_what_it_is_not():
     result = outcomes(make_record(seconds_left=19.9, pending=5, p95=5.63))
     assert "not a second live run" in result["not_claimed"]
     assert "not a rate card" in result["measured_from"]
+
+
+def test_every_encode_speed_the_proof_can_hit_leaves_something_worth_approving():
+    """The state the button on the page actually leaves behind.
+
+    Sixteen versions against a sixty second window, three encoded, so thirteen
+    are outstanding when the gate opens with the window minus three encodes and
+    roughly 22.5s of fixed overhead. The proof once ran twelve against forty,
+    which opened the gate about a second before the date: correct, and worth
+    nothing to the supervisor being warned.
+    """
+
+    for p95 in (2.5, 3.0, 3.9, 5.0, 5.6, 7.0):
+        record = make_record(seconds_left=60 - (3 * p95 + 22.5), pending=13, p95=p95)
+        result = outcomes(record)
+        assert result["doing_nothing_lands"] is False, f"p95 {p95}s: nothing to warn about"
+        assert result["recoverable"] is True, f"p95 {p95}s: nothing recovers it"
+        assert result["cheapest_save"]["added_workers"] <= MAX_EXTRA_WORKERS
