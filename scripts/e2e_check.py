@@ -31,10 +31,18 @@ DEFAULT_URL = "https://slate-delivery-slo-109051079423.us-central1.run.app"
 RESULTS: list[tuple[str, bool, str]] = []
 
 
+#: Set once a key is issued. An anonymous caller gets four investigations per
+#: ten minutes, and a failed one still spends a slot, so a full run of this
+#: checker would rate-limit itself halfway through the agent section.
+API_KEY: str | None = None
+
+
 def call(base, path, method="GET", body=None, timeout=240):
     data = json.dumps(body).encode("utf-8") if body is not None else None
     request = urllib.request.Request(base + path, data=data, method=method)
     request.add_header("content-type", "application/json")
+    if API_KEY:
+        request.add_header("authorization", "Bearer " + API_KEY)
     if data is None and method == "POST":
         request.add_header("content-length", "0")
     try:
@@ -79,6 +87,12 @@ def main() -> int:
     base = args.url.rstrip("/")
     print(f"end-to-end check against {base}")
 
+    global API_KEY
+    status, issued = call(base, "/v1/keys", "POST")
+    API_KEY = (issued.get("data") or {}).get("api_key") if isinstance(issued, dict) else None
+    check("a judge key can be issued without signing up", status in (200, 201) and bool(API_KEY),
+          f"HTTP {status}")
+
     # --- the service is actually up ---------------------------------------
     section("runtime")
     status, health = call(base, "/health")
@@ -92,7 +106,7 @@ def main() -> int:
     status, page = call(base, "/")
     check("page serves", status == 200 and isinstance(page, str) and len(page) > 20000)
     if isinstance(page, str):
-        check("page carries no em dash", "—" not in page and "&mdash;" not in page)
+        check("page carries no em dash", chr(8212) not in page and "&mdash;" not in page)
         check("navbar is in demo order",
               page.find('href="#blindspot"') < page.find('href="#board"') < page.find('href="#partner"'))
 
