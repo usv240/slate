@@ -123,6 +123,23 @@ async def run_investigation(
         bound_evidence.update(result)
         return result
 
+    # Moderation filters are set explicitly rather than left on whatever the
+    # platform defaults to. The inputs reaching these prompts are not all ours:
+    # a delivery title is typed by whoever created it, and the diagnosis quotes
+    # raw FFmpeg stderr. Only the safety fields are set, so nothing here can
+    # disturb Remediate's response schema.
+    safety = types.GenerateContentConfig(
+        safety_settings=[
+            types.SafetySetting(category=category, threshold=types.HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE)
+            for category in (
+                types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+                types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+            )
+        ]
+    )
+
     watch = LlmAgent(
         name="Watch",
         model=MODEL,
@@ -133,6 +150,7 @@ async def run_investigation(
             "values. Do not diagnose and do not create or change a verdict."
         ),
         tools=[get_bound_grafana_evidence],
+        generate_content_config=safety,
         output_key="watch_evidence",
     )
     diagnose = LlmAgent(
@@ -147,6 +165,7 @@ async def run_investigation(
             "evidence does NOT support it or is missing. Never infer the cause from a delivery "
             "title, a scenario name or any label that merely restates the class."
         ),
+        generate_content_config=safety,
         output_key="diagnosis",
     )
     remediate = LlmAgent(
@@ -165,6 +184,7 @@ async def run_investigation(
         output_schema=RemediationPlan,
         disallow_transfer_to_parent=True,
         disallow_transfer_to_peers=True,
+        generate_content_config=safety,
         output_key="remediation_options",
     )
     root_agent = SequentialAgent(

@@ -38,3 +38,36 @@ def test_remediation_options_are_bound_to_actions_the_api_can_perform():
     schema = RemediationPlan.model_json_schema()
     option = schema["$defs"]["RemediationOption"]["properties"]["action"]
     assert set(option["enum"]) == set(REMEDIATION_ACTIONS)
+
+
+def test_every_agent_has_explicit_moderation_settings():
+    """Left unset, these run on whatever the platform defaults to.
+
+    Not all the text reaching these prompts is ours: a delivery title is typed
+    by whoever created it, and Diagnose is asked to quote raw FFmpeg stderr. A
+    production-ready agent should say what it blocks rather than inherit it.
+    """
+
+    import re
+    from pathlib import Path
+
+    from google.genai import types
+
+    source = (Path(__file__).resolve().parents[1] / "slate_app" / "adk_app.py").read_text(
+        encoding="utf-8"
+    )
+    # All three agents must be given the config, or the one that is not becomes
+    # the way in.
+    assert source.count("generate_content_config=safety") == 3
+
+    expected = {
+        types.HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+        types.HarmCategory.HARM_CATEGORY_HARASSMENT,
+        types.HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+        types.HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+    }
+    named = {name for name in re.findall(r"HARM_CATEGORY_[A-Z_]+", source)}
+    assert {category.name for category in expected} <= named
+
+    assert "BLOCK_MEDIUM_AND_ABOVE" in source
+    assert "BLOCK_NONE" not in source and "HarmBlockThreshold.OFF" not in source
