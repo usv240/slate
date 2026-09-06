@@ -25,7 +25,12 @@ class CreateDelivery(BaseModel):
     title: str = Field(min_length=2, max_length=160)
     contractual_date: datetime
     penalty_tier: Literal["standard", "priority", "premiere"] = "standard"
-    specs: list[RenditionSpec] = Field(min_length=1, max_length=8)
+    # Sixteen, not eight. The zero-failure proof needs enough outstanding work
+    # that the gate opens whatever speed the container happens to be encoding
+    # at, and eight cannot satisfy that at both ends of the observed range: fast
+    # enough and the work still fits, slow enough and the date passes before the
+    # third window. Twelve against forty seconds does, and needs room above it.
+    specs: list[RenditionSpec] = Field(min_length=1, max_length=16)
     fault_mode: FaultMode = "none"
     qc_rules: list[Literal[QC_RULES]] = ["resolution", "codec"]
 

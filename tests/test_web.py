@@ -111,3 +111,57 @@ def test_every_info_control_actually_explains_something():
     assert len(calls) >= 10, "the rendered explanations disappeared"
     for tip in calls:
         assert len(tip) > 40, f"tip too short to explain anything: {tip}"
+
+
+def _miss_proof_config():
+    """Read the zero-failure proof's own numbers out of the page."""
+
+    import re
+    from pathlib import Path
+
+    page = (Path(__file__).resolve().parents[1] / "app" / "web" / "index.html").read_text(
+        encoding="utf-8"
+    )
+    count = int(re.search(r"for\(let i=0;i<(\d+);i\+\+\)specs\.push", page).group(1))
+    window = int(re.search(r"contractual_date:new Date\(Date\.now\(\)\+(\d+)\)", page).group(1)) / 1000
+    return count, window
+
+
+def test_the_miss_proof_payload_is_one_the_api_will_accept():
+    """It was not. The proof asked for twelve versions while the model capped
+    them at eight, so every press returned 422 and the headline demonstration
+    did nothing at all."""
+
+    from datetime import datetime, timedelta, timezone
+
+    from slate_app.models import CreateDelivery, RenditionSpec
+
+    count, _ = _miss_proof_config()
+    CreateDelivery(
+        title="Aurora Line S2 - HDR delivery ladder",
+        contractual_date=datetime.now(timezone.utc) + timedelta(seconds=40),
+        penalty_tier="premiere",
+        fault_mode="none",
+        specs=[
+            RenditionSpec(name=f"uhd{n}", width=1920, height=1080,
+                          video_codec="libx265", video_bitrate_kbps=12000)
+            for n in range(count)
+        ],
+    )
+
+
+def test_the_miss_proof_opens_the_gate_at_every_speed_this_deployment_shows():
+    """Whether the gate opened used to depend on how fast Cloud Run felt.
+
+    At wave three the delivery has count-3 versions left, each costing the
+    measured p95, against whatever remains of the window after three encodes and
+    two six second pauses. Both ends matter: too fast and the work still fits,
+    too slow and the date has already gone, which is a different demonstration.
+    """
+
+    count, window = _miss_proof_config()
+    for p95 in (2.5, 3.0, 3.9, 5.6, 7.0):
+        work_left = (count - 3) * p95
+        window_left = window - (3 * p95 + 12)
+        assert window_left > 0, f"at p95 {p95}s the date passes before wave three"
+        assert work_left > window_left, f"at p95 {p95}s the work still fits, so the gate stays shut"
