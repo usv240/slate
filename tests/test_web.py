@@ -236,3 +236,51 @@ def test_the_page_and_the_end_to_end_checker_agree_on_the_window():
     for doc in ("README.md", "docs/DEMO-SCRIPT.md", "docs/DEVPOST-STORY.md"):
         text = (root / doc).read_text(encoding="utf-8").lower()
         assert f"{spoken} second" in text, f"{doc} still names a different window"
+
+
+def test_every_button_the_demo_script_names_exists_on_the_page():
+    """The script is read aloud while clicking. A renamed control breaks it.
+
+    Beats 7 and 8 both described things the page does not do, and neither the
+    unit suite nor the browser check could see it, because the drift was between
+    a document and a control rather than inside the code. This catches the
+    mechanical half: every control the stage directions quote by name has to
+    exist, either as static text or as a string the page's own JavaScript
+    renders. It cannot catch a direction that names a real button and then
+    describes the wrong outcome, which is what beat 7 did.
+    """
+
+    import re
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    page = (root / "app" / "web" / "index.html").read_text(encoding="utf-8")
+    script = (root / "docs" / "DEMO-SCRIPT.md").read_text(encoding="utf-8")
+
+    def is_a_control(label: str) -> bool:
+        # Stage directions also bold spoken sentences, slash-shorthand for two
+        # separate tiles, prose instructions, and runtime values the presenter
+        # is told to look for -- "0 failures" is assembled at run time from a
+        # count, so it is never a literal anywhere. A control is short, is not a
+        # sentence, and is not a number.
+        return (
+            len(label) <= 40
+            and " / " not in label
+            and not label.endswith(".")
+            and ". " not in label
+            and not label[0].isdigit()
+            and not label.startswith(("Do not", "DO", "POINT"))
+        )
+
+    missing = []
+    for line in script.splitlines():
+        if not line.lstrip().startswith(">"):
+            continue
+        for raw in re.findall(r"\*\*(.+?)\*\*", line):
+            label = raw.strip().rstrip(".").strip().strip('"')
+            if not label or label in {"DO:", "POINT:"} or not is_a_control(label):
+                continue
+            if label not in page:
+                missing.append(label)
+
+    assert not missing, f"the demo script names controls the page does not have: {sorted(set(missing))}"
