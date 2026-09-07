@@ -45,8 +45,9 @@ jeopardy, and three things must all be true: projected completion is past the co
 been falling across two consecutive windows, and work remains. One bad moment is deliberately not
 enough to raise an alarm.
 
-**It proves the blind spot live.** One button creates sixteen heavy renditions against a sixty
-second window with **no fault injected at all**, then encodes three of them with real FFmpeg. All
+**It proves the blind spot live.** One button creates sixteen heavy renditions against a
+sixty second window with **no fault injected at all**, then encodes three of them with real
+FFmpeg. All
 three pass. The other thirteen are outstanding work the gate has to project, and by the third wave
 there is more work left than there is window. Three detectors then run over that same measured
 data:

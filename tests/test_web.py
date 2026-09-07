@@ -284,3 +284,22 @@ def test_every_button_the_demo_script_names_exists_on_the_page():
                 missing.append(label)
 
     assert not missing, f"the demo script names controls the page does not have: {sorted(set(missing))}"
+
+
+def test_the_start_here_card_names_the_number_the_proof_actually_creates():
+    """It said eight while the button created sixteen.
+
+    The card is the first description of the proof a visitor reads, and it is
+    static prose, so it does not move when the constant does. It went stale the
+    moment the proof was retuned and stayed that way through a screenshot.
+    """
+
+    from pathlib import Path
+
+    count, _ = _miss_proof_config()
+    spoken = {8: "Eight", 12: "Twelve", 16: "Sixteen"}[count]
+    page = (Path(__file__).resolve().parents[1] / "app" / "web" / "index.html").read_text(
+        encoding="utf-8"
+    )
+    card = page[page.index("See what a failure alert misses") :][:400]
+    assert spoken.lower() in card.lower(), f"the start-here card does not say {spoken.lower()}"
