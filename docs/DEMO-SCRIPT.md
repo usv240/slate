@@ -1,4 +1,4 @@
-# Demo video script: 2:43
+# Demo video script: 2:46
 
 Hard limit 3:00; only the first 3:00 is evaluated.
 
@@ -13,7 +13,7 @@ that sentence.
 words at 165 wpm, takes the measured execution time declared in each beat, and costs every beat
 at `max(talking, waiting)`, because talking over a wait is free, and you cannot talk for forty
 seconds over a five second click. Re-run it after any edit to the narration; it has twice caught
-a runtime the author had estimated wrong by hand. Current estimate: **2:43, seventeen seconds of
+a runtime the author had estimated wrong by hand. Current estimate: **2:46, fourteen seconds of
 margin.** `--fix-headings` renumbers the beats from those same costs, so the timestamps cannot
 drift out of step with the narration.
 
@@ -187,7 +187,7 @@ lands with seconds to spare."**
 
 ---
 
-## 1:07–1:29 · The agents, on real evidence
+## 1:07–1:28 · The agents, on real evidence
 <!-- exec: 20 -->
 
 > **DO:** Click **Board** in the navbar. Scroll down past the card the miss proof just created
@@ -207,7 +207,7 @@ for this exact delivery. The diagnosis has to come from that evidence."**
 
 ---
 
-## 1:29–1:46 · While it runs: drive it yourself
+## 1:28–1:45 · While it runs: drive it yourself
 <!-- exec: 15 -->
 
 > **DO:** The investigation is still running; leave it alone. Click **Bring your own** in the
@@ -227,7 +227,7 @@ use. That's the server's raw answer, not ours."**
 
 ---
 
-## 1:46–1:59 · The diagnosis
+## 1:45–1:59 · The diagnosis
 <!-- exec: 12 -->
 
 > **DO:** Click **Board** in the navbar. The investigation has landed underneath it.
@@ -239,23 +239,29 @@ planted. An earlier build did plant it, scored a hundred percent, and was measur
 
 ---
 
-## 1:59–2:13 · Propose, approve, recover
+## 1:59–2:15 · Propose, approve, recover
 <!-- exec: 10 -->
 
 > **DO:** Stay where you are and move down to the block headed **"Remediate proposed these"**.
-> Press **Approve** on the recommended option. Then, on that same delivery card, press
-> **Run real pipeline**.
-> **POINT:** The schedule cost on each option first, then the status pill on the card turning
-> `recovered`.
+> Press **Approve** on the option tagged **recommended**. The page jumps to a block headed
+> **HUMAN APPROVAL + GRAFANA ANNOTATION** with the annotation Grafana accepted underneath: that
+> is the evidence for the sentence you are saying, so let it sit. Then scroll back to the
+> delivery card and press **Run real pipeline**.
+> **POINT:** The schedule cost on each option first. Then the approval block. Then the pill on
+> the card.
+>
+> *The pill reads `queued` immediately after the approval, not `recovered`. Approving changes
+> the plan; only the re-run does the work. Do not call it recovered before it is, and do not say
+> a number of options aloud, because the agent proposes from four and offers as many as fit.*
 
-**"Four actions the system can actually carry out, each costed. The agent recommends, the human
-approves, and that approval is what writes the Grafana annotation. Re-run, and the delivery is
-recovered before its date."**
+**"It can only propose from four actions the system can really carry out, and each one is costed
+against the schedule. It recommends, a person approves, and that approval is what writes the
+Grafana annotation. Re-run, and it lands before its date."**
 
 
 ---
 
-## 2:13–2:34 · Grafana draws it, Gemini reads it
+## 2:15–2:36 · Grafana draws it, Gemini reads it
 <!-- exec: 18 -->
 
 > **DO:** Click **Panel read** in the navbar and press **Render the panel through MCP** straight
@@ -264,18 +270,22 @@ recovered before its date."**
 > **POINT:** In the Grafana MCP section, the four tiles, and specifically **72** and **7**. Then
 > back on Panel read, the rendered PNG and Gemini's reading side by side.
 
-**"While that renders, the final receiver is simulated, and the page says so. SLATE uses seven
-Grafana MCP tools: metrics, logs, traces, dashboard search, alert rules, annotations and
-rendering."**
+**"While that renders: seventy-two tools on this server, seven called, each with a reason.
+Metrics, logs, traces, alert rules, annotations, rendering. The receiver at the far end is
+simulated, and the page says so."**
+
+> *Do not run "while that renders" into the word simulated. Said together they can be heard as
+> the render being simulated, which is the opposite of what this beat exists to prove. Land the
+> tool count first, then take the receiver as its own sentence.*
 
 > *Scroll back down. The PNG and the reading sit side by side.*
 
-**"And there it is. Grafana rendered that panel, MCP carried the image back, and Gemini read the
-same chart the supervisor is looking at."**
+**"And there it is. Grafana drew that panel, MCP carried the image back, and Gemini read the
+chart itself."**
 
 ---
 
-## 2:34–2:43 · Close
+## 2:36–2:45 · Close
 <!-- exec: 0 -->
 
 > **DO:** Stay on the panel reading. Do not scroll further.
