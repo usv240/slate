@@ -45,9 +45,11 @@ more work left than there is window.
 
 Three detectors are then run over that same measured data:
 
-- `any_failure` is **silent**. Nothing failed, and it stays silent until the date goes by.
-- `deadline_passed` is **silent**. Correct, and useless.
-- `slate_gate` **fires, with roughly twenty seconds of window still left.**
+| Detector | Result |
+|---|---|
+| `any_failure` | **Silent.** Nothing failed, and it stays silent until the date goes by |
+| `deadline_passed` | **Silent.** Correct, and useless |
+| `slate_gate` | **Fires**, while there is still enough window left to act on it |
 
 Underneath, *what the warning buys you*: doing nothing misses the date, and approving a couple
 more encoding workers lands it before the date. That is arithmetic over the p95 those encodes just
@@ -61,35 +63,39 @@ different question.
 
 ```mermaid
 flowchart TD
-    SRC["Generate a source with FFmpeg"] --> ENC["Encode each deliverable version"]
-    ENC --> QC["Check what actually came back"]
-    QC --> PKG["Package"]
-    PKG --> RCV["Delivery receiver, SIMULATED"]
+    SRC["ingest.generate_source<br/>FFmpeg makes the source"]
+    ENC["transcode.rendition<br/>one span per version"]
+    QC["qc.rendition<br/>checks what came back"]
+    PKG["package.manifest"]
+    RCV(["deliver.simulated_endpoint<br/>SIMULATED"])
 
-    ENC -.->|"durations, exit codes, stderr, spans"| OBS[("Prometheus, Loki and Tempo")]
-    ENC --> GATE{"Gate: are all three true?"}
+    SRC --> ENC --> QC --> PKG --> RCV
+
+    ENC -.->|"durations, exit codes, stderr, spans"| OBS[("Prometheus, Loki, Tempo")]
+    ENC --> GATE{"slate_gate<br/>all three true?"}
 
     GATE -->|"no"| QUIET["Stay quiet"]
-    GATE -->|"yes"| ADK["ADK agents: Watch, Diagnose, Remediate<br/>Gemini 2.5 Flash on Vertex AI"]
+    GATE -->|"yes"| ADK["Watch, then Diagnose, then Remediate<br/>Google ADK, Gemini 2.5 Flash on Vertex AI"]
 
     OBS -->|"official grafana/mcp-grafana server"| ADK
-    ADK -->|"proposes costed options only"| HUMAN(["A person approves"])
+    ADK -->|"proposes costed options, never acts"| HUMAN(["A person approves"])
     HUMAN -->|"annotation written back through MCP"| OBS
 ```
 
-Everything in that diagram is real execution except the box marked SIMULATED.
+Everything in that diagram is real execution except the node marked SIMULATED. The span names are
+the ones you will find in Tempo.
 
 ## Two decisions the model cannot make
 
-**Is this delivery in jeopardy?** A pure function decides. An incident opens only when all three
-are true:
+**Is this delivery in jeopardy?** A pure function in [`slate_app/gate.py`](slate_app/gate.py)
+decides. An incident opens only when all three are true:
 
-1. projected completion is after the contractual date;
-2. schedule burn is positive across at least two consecutive windows of at least five seconds each;
-3. work remains.
+1. `projected_completion_after_contract`
+2. `positive_burn_sustained_two_windows`, each window at least five seconds
+3. `work_remaining_positive`
 
-The second condition is why one bad moment cannot raise an alarm, and it is why the judge proof
-takes three runs rather than one.
+The second is why one bad moment cannot raise an alarm, and it is why the proof above takes three
+runs rather than one.
 
 **Why did this version fail?** A deterministic classifier decides, from FFmpeg's own stderr, exit
 status, output size and QC result, in [`slate_app/classify.py`](slate_app/classify.py).
@@ -166,6 +172,9 @@ The three contracted titles on the board are fixtures whose dates roll forward a
 so the board is never found expired. Only the date moves; the measurements stay as the real runs
 left them, and anything you create is never rewritten. See `/v1/board/fixtures`.
 
+Nothing is rate limited except the two endpoints that spend Gemini tokens, and their allowance is
+set above what anyone can reach by clicking. No key is needed for anything on the page.
+
 ## Run it locally
 
 FFmpeg is required. FFprobe is preferred; without it SLATE decodes the actual output with FFmpeg
@@ -178,17 +187,19 @@ python -m venv .venv
 ```
 
 Grafana integration is optional locally. Without credentials every integration route returns 503
-rather than a local guess.
+rather than a local guess. To point it at your own stack, see
+[`docs/GRAFANA-SETUP.md`](docs/GRAFANA-SETUP.md).
 
 ## Testing
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest -q                    # 97 passed, 11 skipped without FFmpeg
-.\.venv\Scripts\python.exe scripts\check_page.py           # loads the page in a real browser
-.\.venv\Scripts\python.exe scripts\mutation_check.py       # breaks the classifier on purpose
+.\.venv\Scripts\python.exe -m pytest -q                  # 108 passed, 11 skipped without FFmpeg
+.\.venv\Scripts\python.exe scripts\check_page.py         # loads the page in a real browser
+.\.venv\Scripts\python.exe scripts\mutation_check.py     # breaks the classifier on purpose
+.\.venv\Scripts\python.exe scripts\e2e_check.py          # 68 scenarios against a live deployment
 ```
 
-Three things worth knowing about how this is checked, because each one caught a real defect:
+Three of those exist because each one caught a real defect the others could not see:
 
 - **The 11 skips are the FFmpeg-dependent proofs.** CI installs FFmpeg and sets
   `SLATE_REQUIRE_FULL_SUITE=1`, which turns a skip into a failure, so a broken FFmpeg install
@@ -199,12 +210,26 @@ Three things worth knowing about how this is checked, because each one caught a 
 - **`scripts/check_page.py`** loads the page in a headless browser and asserts the DOM only
   JavaScript can build. It has caught the page rendering nothing at all, three times, while every
   unit test stayed green.
+- **`scripts/e2e_check.py`** drives 68 scenarios over real HTTP against a deployment, including
+  both slow proofs, and exits non-zero on failure. It found that the blind-spot proof was firing
+  one second before the contractual date, which is correct and useless.
 
 CI additionally enforces the contest's Google-only AI policy by failing the build if `openai`,
 `anthropic`, `mistral`, `cohere` or `bedrock` appears in dependencies.
 
-`scripts/seed_board.py --recording` resets the board and leaves it in the state the demo script
-expects.
+`scripts/seed_board.py` resets a board and leaves the three contracted titles with fresh dates.
+
+## Research this is built on
+
+The mechanic is not ours. We took it from the source and inverted one thing.
+
+| Source | What we took |
+|---|---|
+| Google, *Site Reliability Engineering*, ch. 4, ["Service Level Objectives"](https://sre.google/sre-book/service-level-objectives/) | The error budget: an allowance you spend, not a line you must never cross |
+| Google, *The Site Reliability Workbook*, ch. 5, ["Alerting on SLOs"](https://sre.google/workbook/alerting-on-slos/) | Burn rate, and why alerting on the rate beats alerting on the breach |
+
+**The inversion:** in SRE the deadline is soft and reliability is the budget. Here the contractual
+date is hard and **schedule** is the resource being burned.
 
 ## Prior art, and what we do not claim
 
@@ -216,7 +241,7 @@ We went looking before claiming anything. Full table with sources in
 | Pipeline observability | Prometheus and Grafana, the standard media-infrastructure stack | Commodity. We are not claiming it, we use exactly it |
 | Automated QC and conformance | Telestream Vidchecker, Interra BATON, Shade, EditShare | They answer "is this file correct", file by file. Neither answers "does the remaining work still fit before the date" |
 | Predictive pre-miss alerting | Logistics and supply-chain platforms | The same mechanic in another industry. We name it rather than presenting it as new |
-| Error budgets applied to delivery | SRE practice and published writing | The reframe has prior art. Our inversion, keeping the deadline hard and burning schedule, is a move, not an invention |
+| Error budgets applied to delivery | SRE practice and the writing cited above | The reframe has prior art. Our inversion, keeping the deadline hard and burning schedule, is a move, not an invention |
 | Media supply-chain orchestration | SDVI Rally, Dalet Flex, Vidispine, Ateme | **Unconfirmed in both directions.** We did not establish whether they predict contractual deadline risk, and we do not claim they cannot |
 
 **What we do claim** is narrow: this pattern applied to a media deliverable pipeline where the

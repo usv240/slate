@@ -27,5 +27,5 @@ GET /metrics
 ```
 
 `/health` is passing only after a real Vertex generation and official MCP PromQL
-round-trip. `docs/LIVE-ACCEPTANCE.json` is a redacted record of the last complete
-judge-path verification.
+round-trip. `scripts/e2e_check.py` runs the whole judge path against a
+deployment and exits non-zero if any of it is broken.

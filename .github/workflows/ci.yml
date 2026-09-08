@@ -52,7 +52,7 @@ jobs:
       - name: Compile
         run: python -m compileall -q slate_app
       - name: Validate evidence and dashboard JSON
-        run: python -m json.tool docs/LIVE-ACCEPTANCE.json >/dev/null && python -m json.tool observability/grafana/dashboards/slate-delivery.json >/dev/null
+        run: python -m json.tool observability/grafana/dashboards/slate-delivery.json >/dev/null
 
   container:
     runs-on: ubuntu-latest
